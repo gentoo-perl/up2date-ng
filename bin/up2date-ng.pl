@@ -34,7 +34,6 @@ Getopt::Long::Configure("bundling");
 # - init vars & contants >
 my $VERSION			= "0.1";
 my $portdir			= getParamFromFile(getFileContents("/etc/make.conf"),"PORTDIR","lastseen") || "/usr/portage";
-print "$portdir was my portdir\n";
 my @scan_portage_categories	= qw(dev-perl perl-core);
 my @timeData			= localtime(time);
 my %modules			= ();
