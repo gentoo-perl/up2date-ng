@@ -1,0 +1,14 @@
+Perl Updated Needed (Ebuild vs CPAN)
+
+This list is not exhaustive and may contain mistakes/errors. Accuracy is only
+guaranteed at 90% and is generated to inform developers about which CPAN
+modules are currently out of date in portage. Our most frequent bug request is
+for module bumping. This list is intended as acknowledgement (and hopefully
+will curb some of the bugs to boot).
+
+List of outdated packages
+
+  Packagename        Version in portage       Version on CPAN
+  -----------------------------------------------------------
+<TMPL_PACKAGELIST_TABLE>
+

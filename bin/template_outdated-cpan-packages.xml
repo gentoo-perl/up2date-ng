@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE guide SYSTEM "/dtd/guide.dtd">
+<!-- $Header: $ -->
+
+<!-- Do Not Translate !! -->
+<guide link="/proj/en/perl/outdated-cpan-packages.xml">
+<title>Outdated CPAN Packages (Ebuild vs CPAN)</title>
+
+<author title="Author">
+  Script generated
+</author>
+
+<abstract>
+  This document lists the packages suspected as outdated
+</abstract>
+
+<!-- The content of this document is licensed under the CC-BY-SA license -->
+<!-- See http://creativecommons.org/licenses/by-sa/2.5 -->
+<license/>
+
+<version>1.0</version>
+<date><TMPL_VAR_DATE></date>
+
+<chapter>
+<title>Intro</title>
+<section>
+<body>
+
+<p>
+This list is not exhaustive and may contain mistakes/errors. Accuracy is only
+guaranteed at 90% and is generated to inform developers about which CPAN
+modules are currently out of date in portage. Our most frequent bug request is
+for module bumping. This list is intended as acknowledgement (and hopefully
+will curb some of the bugs to boot).
+</p>
+
+</body>
+</section>
+</chapter>
+
+<chapter>
+<title>List of outdated packages</title>
+<section>
+<body>
+
+<table>
+  <tr>
+    <th>Packagename</th>
+    <th>Version in portage</th>
+    <th>Version on CPAN</th>
+  </tr>
+  <TMPL_PACKAGELIST_TABLE>
+</table>
+
+</body>
+</section>
+</chapter>
+</guide>
