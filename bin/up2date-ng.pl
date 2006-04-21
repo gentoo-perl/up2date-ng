@@ -6,7 +6,7 @@
 #
 # date        : 2006-04-21
 # author      : Christian Hartmann <ian@gentoo.org>
-# version     : 0.11
+# version     : 0.12
 # license     : GPL-2
 # description : Scripts that compares the versions of perl packages in portage
 #               with the version of the packages on CPAN
@@ -32,7 +32,7 @@ use Getopt::Long;
 Getopt::Long::Configure("bundling");
 
 # - init vars & contants >
-my $VERSION			= "0.11";
+my $VERSION			= "0.12";
 my $portdir			= getParamFromFile(getFileContents("/etc/make.conf"),"PORTDIR","lastseen") || "/usr/portage";
 my @scan_portage_categories	= qw(dev-perl perl-core);
 my @timeData			= localtime(time);
@@ -48,9 +48,9 @@ my $DEBUG			= 0;
 my $generate_xml		= 0;
 my $generate_mail		= 0;
 my $generate_html		= 0;
-my $with_qa			= 0;
+my $generate_packagelist	= 0;
+my $generate_all		= 0;
 my $verbose			= 0;
-my $gotPackage			= 0;
 my $mod;
 
 # - init colors >
@@ -63,16 +63,24 @@ my $reset	= color("reset");
 # - get options >
 printHeader();
 GetOptions(
-	'generate-xml'	=> \$generate_xml,
-	'generate-mail'	=> \$generate_mail,
-	'generate-html'	=> \$generate_html,
-	'with-qa'	=> \$with_qa,
-	'debug'		=> \$DEBUG,
-	'verbose|v'	=> \$verbose,
-	'help|h'	=> sub { printUsage(); }
+	'generate-xml'		=> \$generate_xml,
+	'generate-mail'		=> \$generate_mail,
+	'generate-html'		=> \$generate_html,
+	'generate-packagelist'	=> \$generate_packagelist,
+	'generate-all'		=> \$generate_all,
+	'debug'			=> \$DEBUG,
+	'verbose|v'		=> \$verbose,
+	'help|h'		=> sub { printUsage(); }
 	) || printUsage();
 
-if ($generate_xml+$generate_mail+$generate_html+$with_qa+$DEBUG+$verbose == 0) { printUsage(); }
+if ($generate_all)
+{
+	$generate_xml=1;
+	$generate_mail=1;
+	$generate_html=1;
+	$generate_packagelist=1;
+}
+if ($generate_xml+$generate_mail+$generate_html+$generate_packagelist+$DEBUG+$verbose == 0) { printUsage(); }
 
 # - get package/version info from portage and cpan >
 print "\n";
@@ -83,97 +91,81 @@ print $green." *".$reset." getting package information from portage-tree\n";
 getPerlPackages();
 
 # - get some work done >
-foreach my $p_original_modulename (sort keys %{$modules{'portage'}})
+foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}})
 {
 	if ($DEBUG) { print $p_original_modulename."\n"; }
 	$p_modulename=$p_original_modulename;
 	$p_modulename=~s/-/::/g;
-		
-	$gotPackage=0;
-	if (! defined $modules{'cpan'}{$p_modulename})
+	
+	if (! defined $modules{'cpan_lc'}{$p_modulename})
 	{
-		# - Could not find a matching package name - try something different (lowercase) >
-		if (defined $modules{'cpan_lc'}{lc($p_modulename)}{'cpan'})
-		{
-			# - We could find a matching package after getting rid of case-sensitivity >
-			if ($with_qa) { print $yellow." *".$reset." [QA-Notice] Package '".$p_original_modulename."' should be renamed to match case: ".$modules{'cpan_lc'}{lc($p_modulename)}{'cpan'}."\n"; }
-			$modules{'cpan'}{$modules{'cpan_lc'}{lc($p_modulename)}{'cpan'}}=$modules{'cpan_lc'}{lc($p_modulename)}{'version'};
-			$p_modulename=$modules{'cpan_lc'}{lc($p_modulename)}{'cpan'};
-			$gotPackage=1;
-		}
-		else
-		{
-			if ($DEBUG) { print "ERROR: Could not find CPAN-Module ('".$p_modulename."') for package '".$p_original_modulename."'!\n"; }
-		}
+		# - Could not find a matching package name - probably not a CPAN-module >
+		if ($DEBUG) { print "ERROR: Could not find CPAN-Module ('".$p_modulename."') for package '".$p_original_modulename."'!\n"; }
 	}
 	else
 	{
-		# - Package found without doing any nasty tricks >
-		$gotPackage=1;
-	}
-	
-	if ($gotPackage)
-	{
+		# - Package found >
+		
 		# - Convert portage version >
-		@tmp_v=split(/\./,$modules{'portage'}{$p_original_modulename});
+		@tmp_v=split(/\./,$modules{'portage_lc'}{$p_original_modulename});
 		if ($#tmp_v > 1)
 		{
-			if ($DEBUG) { print " converting version -> ".$modules{'portage'}{$p_original_modulename}; }
-			$modules{'portage'}{$p_original_modulename}=$tmp_v[0].".";
-			for (1..$#tmp_v) { $modules{'portage'}{$p_original_modulename}.= $tmp_v[$_]; }
-			if ($DEBUG) { print " -> ".$modules{'portage'}{$p_original_modulename}."\n"; }
+			if ($DEBUG) { print " converting version -> ".$modules{'portage_lc'}{$p_original_modulename}; }
+			$modules{'portage_lc'}{$p_original_modulename}=$tmp_v[0].".";
+			for (1..$#tmp_v) { $modules{'portage_lc'}{$p_original_modulename}.= $tmp_v[$_]; }
+			if ($DEBUG) { print " -> ".$modules{'portage_lc'}{$p_original_modulename}."\n"; }
 		}
 		
 		# - Convert CPAN version >
-		@tmp_v=split(/\./,$modules{'cpan'}{$p_modulename});
+		@tmp_v=split(/\./,$modules{'cpan_lc'}{$p_modulename});
 		if ($#tmp_v > 1)
 		{
-			if ($DEBUG) { print " converting version -> ".$modules{'cpan'}{$p_modulename}; }
-			$modules{'cpan'}{$p_modulename}=$tmp_v[0].".";
-			for (1..$#tmp_v) { $modules{'cpan'}{$p_modulename}.= $tmp_v[$_]; }
-			if ($DEBUG) { print " -> ".$modules{'cpan'}{$p_modulename}."\n"; }
+			if ($DEBUG) { print " converting version -> ".$modules{'cpan_lc'}{$p_modulename}; }
+			$modules{'cpan_lc'}{$p_modulename}=$tmp_v[0].".";
+			for (1..$#tmp_v) { $modules{'cpan_lc'}{$p_modulename}.= $tmp_v[$_]; }
+			if ($DEBUG) { print " -> ".$modules{'cpan_lc'}{$p_modulename}."\n"; }
 		}
 		
 		# - Portage package matches CPAN package >
-		if ($modules{'cpan'}{$p_modulename} > $modules{'portage'}{$p_original_modulename})
+		if ($modules{'cpan_lc'}{$p_modulename} > $modules{'portage_lc'}{$p_original_modulename})
 		{
 			# - package needs some lovin >
-			if ($verbose) { print $p_original_modulename." needs updating. Ebuild: ".$modules{'portage'}{$p_original_modulename}."; CPAN: ".$modules{'cpan'}{$p_modulename}."\n"; }
+			if ($verbose) { print $modules{'portage'}{$p_original_modulename}{'category'}."/".$modules{'portage'}{$p_original_modulename}{'name'}." needs updating. Ebuild: ".$modules{'portage_lc'}{$p_original_modulename}."; CPAN: ".$modules{'cpan_lc'}{$p_modulename}."\n"; }
 			
 			# - store packagename - it needs to be updated >
-			push(@packages2update,$p_original_modulename);
+			push(@packages2update,$modules{'portage'}{$p_original_modulename}{'category'}."/".$modules{'portage'}{$p_original_modulename}{'name'});
 			
 			if ($generate_xml)
 			{
 				$xml_packagelist_table .= "  <tr>\n";
-				$xml_packagelist_table .= "    <ti>".$p_original_modulename."</ti>\n";
-				$xml_packagelist_table .= "    <ti>".$modules{'portage'}{$p_original_modulename}."</ti>\n";
-				$xml_packagelist_table .= "    <ti>".$modules{'cpan'}{$p_modulename}."</ti>\n";
+				$xml_packagelist_table .= "    <ti>".$modules{'portage'}{$p_original_modulename}{'name'}."</ti>\n";
+				$xml_packagelist_table .= "    <ti>".$modules{'portage_lc'}{$p_original_modulename}."</ti>\n";
+				$xml_packagelist_table .= "    <ti>".$modules{'cpan_lc'}{$p_modulename}."</ti>\n";
 				$xml_packagelist_table .= "  </tr>\n";
 			}
 			
 			if ($generate_mail)
 			{
-				$mail_packagelist_table .= "  ".$p_original_modulename;
-				for(0..(35-length($modules{'portage'}{$p_original_modulename})-length($p_original_modulename)))
+				$mail_packagelist_table .= "  ".$modules{'portage'}{$p_original_modulename}{'name'};
+				for(0..(35-length($modules{'portage_lc'}{$p_original_modulename})-length($p_original_modulename)))
 				{
 					$mail_packagelist_table .= " ";
 				}
-				$mail_packagelist_table .= " ".$modules{'portage'}{$p_original_modulename};
-				for(0..(20-length($modules{'cpan'}{$p_modulename})))
+				$mail_packagelist_table .= " ".$modules{'portage_lc'}{$p_original_modulename};
+				for(0..(20-length($modules{'cpan_lc'}{$p_modulename})))
 				{
 					$mail_packagelist_table .= " ";
 				}
-				$mail_packagelist_table .= " ".$modules{'cpan'}{$p_modulename};
+				$mail_packagelist_table .= " ".$modules{'cpan_lc'}{$p_modulename};
 				$mail_packagelist_table .= "\n";
 			}
 
 			if ($generate_html)
 			{
 				$html_packagelist_table .= "\t\t\t<tr>\n";
-				$html_packagelist_table .= "\t\t\t\t<td>".$p_original_modulename."</td>\n";
-				$html_packagelist_table .= "\t\t\t\t<td>".$modules{'portage'}{$p_original_modulename}."</td>\n";
-				$html_packagelist_table .= "\t\t\t\t<td>".$modules{'cpan'}{$p_modulename}."</td>\n";
+				$html_packagelist_table .= "\t\t\t\t<td>".$modules{'portage'}{$p_original_modulename}{'name'}."</td>\n";
+				$html_packagelist_table .= "\t\t\t\t<td>".$modules{'portage_lc'}{$p_original_modulename}."</td>\n";
+				$html_packagelist_table .= "\t\t\t\t<td>".$modules{'cpan_lc'}{$p_modulename}."</td>\n";
 				$html_packagelist_table .= "\t\t\t</tr>\n";
 			}
 		}
@@ -237,6 +229,20 @@ if ($generate_html)
 	print $green." *".$reset." done!\n";
 }
 
+# - Generate packagelist >
+if ($generate_packagelist)
+{
+	print $green." *".$reset." called with --generate-packagelist\n";
+	print $green." *".$reset." creating outdated-cpan-packages.packagelist\n";
+	open(FH,">outdated-cpan-packages.packagelist") || die ("Cannot open/write to file outdated-cpan-packages.packagelist");
+	foreach (@packages2update)
+	{
+		print FH $_."\n";
+	}
+	close(FH);
+	print $green." *".$reset." done!\n";
+}
+
 print "\n";
 exit(0);
 
@@ -270,7 +276,9 @@ sub getPerlPackages
 				# - get highest version >
 				if ($#tmp_availableVersions>-1)
 				{
-					$modules{'portage'}{$tp}=(sort(@tmp_availableVersions))[$#tmp_availableVersions];
+					$modules{'portage_lc'}{lc($tp)}=(sort(@tmp_availableVersions))[$#tmp_availableVersions];
+					$modules{'portage'}{lc($tp)}{'name'}=$tp;
+					$modules{'portage'}{lc($tp)}{'category'}=$tc;
 				}
 			}
 		}
@@ -400,7 +408,7 @@ sub getAvailableEbuilds
 {
 	my $PORTDIR	= shift;
 	my $catPackage	= shift;
-	my @ebuildList	= ();
+	my @packagelist	= ();
 	
 	if (-e $PORTDIR."/".$catPackage)
 	{
@@ -410,12 +418,12 @@ sub getAvailableEbuilds
 		{
 			if ($_ =~ m/(.+)\.ebuild$/)
 			{
-				push(@ebuildList,$_);
+				push(@packagelist,$_);
 			}
 		}
 	}
 	
-	return @ebuildList;
+	return @packagelist;
 }
 
 
@@ -432,7 +440,7 @@ sub getEbuildVersionSpecial
 	$ebuildVersion=~s/([a-zA-Z0-9\-_\/]+)-rc[0-9+]/$1/;
 	$ebuildVersion=~s/([a-zA-Z0-9\-_\/]+)_p[0-9+]/$1/;
 	
-	# - get rid of oter stuff we don't want >
+	# - get rid of other stuff we don't want >
 	$ebuildVersion=~s/([a-zA-Z0-9\-_\/]+)_alpha/$1/;
 	$ebuildVersion=~s/([a-zA-Z0-9\-_\/]+)_beta/$1/;
 	$ebuildVersion=~s/[a-zA-Z]+$//;
@@ -442,17 +450,21 @@ sub getEbuildVersionSpecial
 
 sub getCPANPackages
 {
+	my $cpan_pn	= "";
+	
 	for $mod (CPAN::Shell->expand("Module","/./"))
 	{
 		if ( (defined $mod->cpan_version) && ($mod->cpan_version ne "undef") )
 		{
-			$modules{'cpan'}{$mod->id}=$mod->cpan_version;
-			$modules{'cpan_lc'}{lc($mod->id)}{'version'}=$mod->cpan_version;
-			$modules{'cpan_lc'}{lc($mod->id)}{'cpan'}=$mod->id;
+			$cpan_pn = $mod->id;
+			$modules{'cpan'}{$cpan_pn}=$mod->cpan_version;
+			$modules{'cpan_lc'}{lc($cpan_pn)}=$mod->cpan_version;
 			
 			# - Remove any leading/trailing stuff (like "v" in "v5.2.0") we don't want >
-			$modules{'cpan'}{$mod->id}=~s/^[a-zA-Z]+//;
-			$modules{'cpan'}{$mod->id}=~s/[a-zA-Z]+$//;
+			$modules{'cpan'}{$cpan_pn}=~s/^[a-zA-Z]+//;
+			$modules{'cpan'}{$cpan_pn}=~s/[a-zA-Z]+$//;
+			$modules{'cpan_lc'}{lc($cpan_pn)}=~s/^[a-zA-Z]+//;
+			$modules{'cpan_lc'}{lc($cpan_pn)}=~s/[a-zA-Z]+$//;
 		}
 	}
 	
@@ -469,16 +481,17 @@ sub printHeader
 
 sub printUsage
 {
-	print "  --generate-xml  : generate GuideXML file with table of outdated packages\n";
-	print "                    (using template_outdated-cpan-packages.xml)\n";
-	print "  --generate-mail : generate an mail body\n";
-	print "                    (using template_outdated-cpan-packages.mail)\n";
-	print "  --generate-html : generate html file with table of outdated packages\n";
-	print "                    (using template_outdated-cpan-packages.html)\n";
-	print "  -v, --verbose   : be a bit more verbose\n";
-	print "  --with-qa       : show qa-notices\n";
-	print "  --debug         : show debug information\n";
-	print "  -h, --help      : show this help\n";
+	print "  --generate-xml         : generate GuideXML file with table of outdated packages\n";
+	print "                           (using template_outdated-cpan-packages.xml)\n";
+	print "  --generate-mail        : generate an mail body\n";
+	print "                           (using template_outdated-cpan-packages.mail)\n";
+	print "  --generate-html        : generate html file with table of outdated packages\n";
+	print "                           (using template_outdated-cpan-packages.html)\n";
+	print "  --generate-packagelist : generate list of outdated packages\n";
+	print "  --generate-all         : enables generation on xml, mail, html and packagelist\n";
+	print "  -v, --verbose          : be a bit more verbose\n";
+	print "  --debug                : show debug information\n";
+	print "  -h, --help             : show this help\n";
 	print "\n";
 	
 	exit(0);
