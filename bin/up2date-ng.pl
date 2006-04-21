@@ -185,7 +185,7 @@ if ($generate_xml)
 {
 	print $green." *".$reset." called with --generate-xml\n";
 	my $xml = getFileContents("template_outdated-cpan-packages.xml");
-	my $dateXML = int($timeData[5]+1900)."-".$timeData[4]."-".$timeData[3];
+	my $dateXML = int($timeData[5]+1900)."-".($timeData[4]+1)."-".$timeData[3];
 	chomp($xml_packagelist_table);
 	$xml =~ s/<TMPL_PACKAGELIST_TABLE>/$xml_packagelist_table/;
 	$xml =~ s/<TMPL_VAR_DATE>/$dateXML/g;
@@ -217,7 +217,7 @@ if ($generate_html)
 {
 	print $green." *".$reset." called with --generate-html\n";
 	my $html = getFileContents("template_outdated-cpan-packages.html");
-	my $dateHTML = int($timeData[5]+1900)."-".$timeData[4]."-".$timeData[3];
+	my $dateHTML = int($timeData[5]+1900)."-".($timeData[4]+1)."-".$timeData[3];
 	chomp($html_packagelist_table);
 	$html =~ s/<TMPL_PACKAGELIST_TABLE>/$html_packagelist_table/;
 	$html =~ s/<TMPL_VAR_DATE>/$dateHTML/g;
@@ -496,3 +496,78 @@ sub printUsage
 	
 	exit(0);
 }
+
+# - Here comes the POD >
+
+=head1 NAME
+
+up2date-ng - Compare module versions (ebuild vs CPAN)
+
+=head1 VERSION
+
+This document refers to version 0.12 of up2date-ng
+
+=head1 SYNOPSIS
+
+up2date-ng [option]...
+
+=head1 DESCRIPTION
+
+up2date-ng is a tool that compares the versions of perl packages in portage
+with the version of the packages on CPAN. up2date-ng is developed and used
+by the Gentoo perl-herd maintainers to keep track of which cpan related
+ebuilds could be versionbumped.
+
+=head1 AGRUMENTS
+
+  --generate-xml           generate GuideXML file with table of outdated packages
+                           (using template_outdated-cpan-packages.xml)
+
+  --generate-mail          generate an mail body
+                           (using template_outdated-cpan-packages.mail)
+
+  --generate-html          generate html file with table of outdated packages
+                           (using template_outdated-cpan-packages.html)
+
+  --generate-packagelist   generate list of outdated packages
+
+  --generate-all           enables generation on xml, mail, html and packagelist
+
+  -v, --verbose            be a bit more verbose
+
+  --debug                  show debug information
+
+  -h, --help               show options and versionnumber
+
+=head1 AUTHOR
+
+Christian Hartmann <ian@gentoo.org>
+
+=head1 TODO
+
+Put your stuff here and poke me.
+
+=head1 REPORTING BUGS
+
+Please report bugs via http://bugs.gentoo.org/ or https://bugs.gentoo.org/
+
+=head1 LICENSE
+
+up2date-ng - Compare module versions (ebuild vs CPAN)
+Copyright (C) 2006  Christian Hartmann
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+=cut
