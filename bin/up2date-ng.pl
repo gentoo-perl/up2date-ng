@@ -268,7 +268,10 @@ sub getPerlPackages
 				}
 				
 				# - get highest version >
-				$modules{'portage'}{$tp}=(sort(@tmp_availableVersions))[$#tmp_availableVersions];
+				if ($#tmp_availableVersions>-1)
+				{
+					$modules{'portage'}{$tp}=(sort(@tmp_availableVersions))[$#tmp_availableVersions];
+				}
 			}
 		}
 		undef $dhp;
