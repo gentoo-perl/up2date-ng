@@ -4,9 +4,9 @@
 #
 # up2date-ng.pl
 #
-# date        : 2006-04-20
+# date        : 2006-04-21
 # author      : Christian Hartmann <ian@gentoo.org>
-# version     : 0.1
+# version     : 0.11
 # license     : GPL-2
 # description : Scripts that compares the versions of perl packages in portage
 #               with the version of the packages on CPAN
@@ -32,7 +32,7 @@ use Getopt::Long;
 Getopt::Long::Configure("bundling");
 
 # - init vars & contants >
-my $VERSION			= "0.1";
+my $VERSION			= "0.11";
 my $portdir			= getParamFromFile(getFileContents("/etc/make.conf"),"PORTDIR","lastseen") || "/usr/portage";
 my @scan_portage_categories	= qw(dev-perl perl-core);
 my @timeData			= localtime(time);
@@ -43,9 +43,11 @@ my @tmp_v			= ();
 my $p_modulename		= "";
 my $xml_packagelist_table	= "";
 my $mail_packagelist_table	= "";
+my $html_packagelist_table	= "";
 my $DEBUG			= 0;
 my $generate_xml		= 0;
 my $generate_mail		= 0;
+my $generate_html		= 0;
 my $with_qa			= 0;
 my $verbose			= 0;
 my $gotPackage			= 0;
@@ -63,13 +65,14 @@ printHeader();
 GetOptions(
 	'generate-xml'	=> \$generate_xml,
 	'generate-mail'	=> \$generate_mail,
+	'generate-html'	=> \$generate_html,
 	'with-qa'	=> \$with_qa,
 	'debug'		=> \$DEBUG,
 	'verbose|v'	=> \$verbose,
 	'help|h'	=> sub { printUsage(); }
 	) || printUsage();
 
-if ($generate_xml+$generate_mail+$with_qa+$DEBUG+$verbose == 0) { printUsage(); }
+if ($generate_xml+$generate_mail+$generate_html+$with_qa+$DEBUG+$verbose == 0) { printUsage(); }
 
 # - get package/version info from portage and cpan >
 print "\n";
@@ -164,6 +167,15 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage'}})
 				$mail_packagelist_table .= " ".$modules{'cpan'}{$p_modulename};
 				$mail_packagelist_table .= "\n";
 			}
+
+			if ($generate_html)
+			{
+				$html_packagelist_table .= "\t\t\t<tr>\n";
+				$html_packagelist_table .= "\t\t\t\t<td>".$p_original_modulename."</td>\n";
+				$html_packagelist_table .= "\t\t\t\t<td>".$modules{'portage'}{$p_original_modulename}."</td>\n";
+				$html_packagelist_table .= "\t\t\t\t<td>".$modules{'cpan'}{$p_modulename}."</td>\n";
+				$html_packagelist_table .= "\t\t\t</tr>\n";
+			}
 		}
 		else
 		{
@@ -208,6 +220,22 @@ if ($generate_mail)
 	print $green." *".$reset." done!\n";
 }
 
+# - Generate html >
+if ($generate_html)
+{
+	print $green." *".$reset." called with --generate-html\n";
+	my $html = getFileContents("template_outdated-cpan-packages.html");
+	my $dateHTML = int($timeData[5]+1900)."-".$timeData[4]."-".$timeData[3];
+	chomp($html_packagelist_table);
+	$html =~ s/<TMPL_PACKAGELIST_TABLE>/$html_packagelist_table/;
+	$html =~ s/<TMPL_VAR_DATE>/$dateHTML/g;
+	
+	print $green." *".$reset." creating outdated-cpan-packages.html\n";
+	open(FH,">outdated-cpan-packages.html") || die ("Cannot open/write to file outdated-cpan-packages.html");
+	print FH $html;
+	close(FH);
+	print $green." *".$reset." done!\n";
+}
 
 print "\n";
 exit(0);
@@ -432,7 +460,7 @@ sub printHeader
 {
 	print "\n";
 	print $green." up2date-ng.pl".$reset." version ".$VERSION." - brought to you by the Gentoo perl-herd-maintainer ;-)\n";
-	print "                             Distributed under the terms of the GPL-2\n";
+	print "                              Distributed under the terms of the GPL-2\n";
 	print "\n";
 }
 
@@ -442,6 +470,8 @@ sub printUsage
 	print "                    (using template_outdated-cpan-packages.xml)\n";
 	print "  --generate-mail : generate an mail body\n";
 	print "                    (using template_outdated-cpan-packages.mail)\n";
+	print "  --generate-html : generate html file with table of outdated packages\n";
+	print "                    (using template_outdated-cpan-packages.html)\n";
 	print "  -v, --verbose   : be a bit more verbose\n";
 	print "  --with-qa       : show qa-notices\n";
 	print "  --debug         : show debug information\n";

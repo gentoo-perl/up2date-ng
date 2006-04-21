@@ -1,0 +1,31 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		<meta http-equiv="expires" content="0">
+		<title>Outdated CPAN Packages (Ebuild vs CPAN) - Generated: <TMPL_VAR_DATE></title>
+	</head>
+	<body>
+		<div>
+			This list is not exhaustive and may contain mistakes/errors. Accuracy is only
+			guaranteed at 90% and is generated to inform developers about which CPAN
+			modules are currently out of date in portage. Our most frequent bug request is
+			for module bumping. This list is intended as acknowledgement (and hopefully
+			will curb some of the bugs to boot).
+		</div>
+		
+		<div>
+			List of outdated packages
+		</div>
+		
+		<table>
+			<tr>
+				<th>Packagename</th>
+				<th>Version in portage</th>
+				<th>Version on CPAN</th>
+			</tr>
+			<TMPL_PACKAGELIST_TABLE>
+		</table>
+		
+	</body>
+</html>
