@@ -1,0 +1,24 @@
+# This file is used by up2date script to translate packagenames
+# of ebuilds to the corresponding cpan-modulenames.
+#
+# Examples:
+#
+# To mark a package as non-cpan-package enter a line like that:
+# ebuild-packagename	-
+# E.g.:
+# libwww-perl		-
+#
+# When the packagename on cpan differs from the packagename
+# we use for the ebuild add a line like that:
+# ebuild-packagename	cpan-packagename
+# E.g.:
+# XML-Sablot		XML::Sablotron
+
+XML-Sablot		XML::Sablotron
+perl-ldap		Net::LDAP
+CPAN-Mini-Phalanx	CPAN::Mini::Phalanx100
+PodParser		Pod::Parser
+Boulder			Stone
+adocman			-
+Audio-CD-disc-cover	-
+

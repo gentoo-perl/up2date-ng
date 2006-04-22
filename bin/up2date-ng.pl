@@ -6,7 +6,7 @@
 #
 # date        : 2006-04-22
 # author      : Christian Hartmann <ian@gentoo.org>
-# version     : 0.13
+# version     : 0.14
 # license     : GPL-2
 # description : Scripts that compares the versions of perl packages in portage
 #               with the version of the packages on CPAN
@@ -32,16 +32,19 @@ use Getopt::Long;
 Getopt::Long::Configure("bundling");
 
 # - init vars & contants >
-my $VERSION			= "0.13";
+my $VERSION			= "0.14";
 my $portdir			= getParamFromFile(getFileContents("/etc/make.conf"),"PORTDIR","lastseen") || "/usr/portage";
 my @scan_portage_categories	= qw(dev-perl perl-core);
 my $package_mask_file		= "up2date_package.mask";
+my $package_altname_file	= "up2date_package.altname";
 my @timeData			= localtime(time);
 my %modules			= ();
 my @tmp_availableVersions	= ();
 my @packages2update		= ();
 my @tmp_v			= ();
 my %pmask			= ();
+my %paltname			= ();
+my @need_packagealtname		= ();
 my $p_modulename		= "";
 my $xml_packagelist_table	= "";
 my $mail_packagelist_table	= "";
@@ -95,52 +98,87 @@ if (-f $package_mask_file)
 	
 	foreach my $line (split(/\n/,$pmask{'all'}))
 	{
-		$line=~s/[ |\t]+$//; # remove trailing whitespaces and tabs
-	
-		if (substr($line,0,2) eq ">=")
-		{
-			# - block package versions greater/equal then given version (e.g. >=dev-perl/Video-Info-0.999) >
-			$tmp=substr($line,2,length($line)-2);
-			$tmp=~s/([a-zA-Z\-]+)\/([a-zA-Z\-]+)-([0-9a-zA-Z\._\-]+)/$1\/$2/;
-			$pmask{'package'}{$tmp}{'version'}=$3;
-			$pmask{'package'}{$tmp}{'operator'}=">=";
-		}
-		elsif (substr($line,0,1) eq ">")
-		{
-			# - block package versions greater then given version (e.g. >dev-perl/Video-Info-0.993) >
-			$tmp=substr($line,1,length($line)-1);
-			$tmp=~s/([a-zA-Z\-]+)\/([a-zA-Z\-]+)-([0-9a-zA-Z\._\-]+)/$1\/$2/;
-			$pmask{'package'}{$tmp}{'version'}=$3;
-			$pmask{'package'}{$tmp}{'operator'}=">";
-		}
-		elsif (substr($line,0,1) eq "=")
-		{
-			# - block one package version (e.g. =dev-perl/Video-Info-0.999) >
-			$tmp=substr($line,1,length($line)-1);
-			$tmp=~s/([a-zA-Z\-]+)\/([a-zA-Z\-]+)-([0-9a-zA-Z\._\-]+)/$1\/$2/;
-			$pmask{'package'}{$tmp}{'version'}=$3;
-			$pmask{'package'}{$tmp}{'operator'}="=";
-		}
-		else
-		{
-			# - block whole package (e.g. dev-perl/Video-Info) >
-			$tmp=$line;
-			$pmask{'package'}{$tmp}{'operator'}="*";
-			$pmask{'package'}{$tmp}{'version'}=0;
-		}
+		$line=~s/^[ |\t]+//;	# leading whitespaces and tabs
+		$line=~s/[ |\t]+$//;	# trailing whitespaces and tabs
+		$line=~s/#(.*)//g;	# remove comments
 		
-		if ($DEBUG)
+		if ($line ne "")
 		{
-			print "package: ".$tmp."\n";
-			print "pmask{'package'}{'".$tmp."'}{'version'} : ".$pmask{'package'}{$tmp}{'version'}."\n";
-			print "pmask{'package'}{'".$tmp."'}{'operator'}: ".$pmask{'package'}{$tmp}{'operator'}."\n";
-			print "\n";
+			if (substr($line,0,2) eq ">=")
+			{
+				# - block package versions greater/equal then given version (e.g. >=dev-perl/Video-Info-0.999) >
+				$tmp=substr($line,2,length($line)-2);
+				$tmp=~s/([a-zA-Z\-]+)\/([a-zA-Z\-]+)-([0-9a-zA-Z\._\-]+)/$1\/$2/;
+				$pmask{'package'}{$tmp}{'version'}=$3;
+				$pmask{'package'}{$tmp}{'operator'}=">=";
+			}
+			elsif (substr($line,0,1) eq ">")
+			{
+				# - block package versions greater then given version (e.g. >dev-perl/Video-Info-0.993) >
+				$tmp=substr($line,1,length($line)-1);
+				$tmp=~s/([a-zA-Z\-]+)\/([a-zA-Z\-]+)-([0-9a-zA-Z\._\-]+)/$1\/$2/;
+				$pmask{'package'}{$tmp}{'version'}=$3;
+				$pmask{'package'}{$tmp}{'operator'}=">";
+			}
+			elsif (substr($line,0,1) eq "=")
+			{
+				# - block one package version (e.g. =dev-perl/Video-Info-0.999) >
+				$tmp=substr($line,1,length($line)-1);
+				$tmp=~s/([a-zA-Z\-]+)\/([a-zA-Z\-]+)-([0-9a-zA-Z\._\-]+)/$1\/$2/;
+				$pmask{'package'}{$tmp}{'version'}=$3;
+				$pmask{'package'}{$tmp}{'operator'}="=";
+			}
+			else
+			{
+				# - block whole package (e.g. dev-perl/Video-Info) >
+				$tmp=$line;
+				$pmask{'package'}{$tmp}{'operator'}="*";
+				$pmask{'package'}{$tmp}{'version'}=0;
+			}
+			
+			if ($DEBUG)
+			{
+				print "package: ".$tmp."\n";
+				print "pmask{'package'}{'".$tmp."'}{'version'} : ".$pmask{'package'}{$tmp}{'version'}."\n";
+				print "pmask{'package'}{'".$tmp."'}{'operator'}: ".$pmask{'package'}{$tmp}{'operator'}."\n";
+				print "\n";
+			}
 		}
 	}
 }
 else
 {
 	print $green." *".$reset." No package.mask file available - Skipping\n";
+}
+
+# - Parse up2date_package.mask >
+if (-f $package_altname_file)
+{
+	print $green." *".$reset." parsing ".$package_altname_file."\n";
+	
+	$paltname{'all'} = getFileContents($package_altname_file);
+	
+	foreach my $line (split(/\n/,$paltname{'all'}))
+	{
+		$line=~s/^[ |\t]+//;	# leading whitespaces and tabs
+		$line=~s/[ |\t]+$//;	# trailing whitespaces and tabs
+		$line=~s/#(.*)//g;	# remove comments
+		
+		if ($line ne "" && $line ne " ")
+		{
+			$line=~s/[ |\t]+/ /; # remove multiple whitespaces and tabs
+			my @tmp=split(/ /,$line);
+			
+			# - set $paltname{'portage'}{<portage-packagename>} = <cpan-packagename> (in lowercase) >
+			$paltname{'portage'}{lc($tmp[0])}=lc($tmp[1]);
+
+			if ($DEBUG) { print $tmp[0]." ".$paltname{'portage'}{lc($tmp[0])}."\n"; }
+		}
+	}
+}
+else
+{
+	print $green." *".$reset." No package.altname file available - Skipping\n";
 }
 
 # - get package/version info from portage and cpan >
@@ -161,122 +199,153 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}})
 	if (! defined $modules{'cpan_lc'}{$p_modulename})
 	{
 		# - Could not find a matching package name - probably not a CPAN-module >
-		if ($DEBUG) { print "ERROR: Could not find CPAN-Module ('".$p_modulename."') for package '".$p_original_modulename."'!\n"; }
-	}
-	else
-	{
-		# - Package found >
+		if ($DEBUG) { print "- Could not find CPAN-Module ('".$p_modulename."') for package '".$p_original_modulename."'!\n"; }
 		
-		# - Convert portage version >
-		@tmp_v=split(/\./,$modules{'portage_lc'}{$p_original_modulename});
-		if ($#tmp_v > 1)
+		# - Look for an entry in up2date_package.altname for this package >
+		if ($paltname{'portage'}{$p_original_modulename})
 		{
-			if ($DEBUG) { print " converting version -> ".$modules{'portage_lc'}{$p_original_modulename}; }
-			$modules{'portage_lc'}{$p_original_modulename}=$tmp_v[0].".";
-			for (1..$#tmp_v) { $modules{'portage_lc'}{$p_original_modulename}.= $tmp_v[$_]; }
-			if ($DEBUG) { print " -> ".$modules{'portage_lc'}{$p_original_modulename}."\n"; }
-		}
-		
-		# - Convert CPAN version >
-		@tmp_v=split(/\./,$modules{'cpan_lc'}{$p_modulename});
-		if ($#tmp_v > 1)
-		{
-			if ($DEBUG) { print " converting version -> ".$modules{'cpan_lc'}{$p_modulename}; }
-			$modules{'cpan_lc'}{$p_modulename}=$tmp_v[0].".";
-			for (1..$#tmp_v) { $modules{'cpan_lc'}{$p_modulename}.= $tmp_v[$_]; }
-			if ($DEBUG) { print " -> ".$modules{'cpan_lc'}{$p_modulename}."\n"; }
-		}
-		
-		# - Portage package matches CPAN package >
-		if ($modules{'cpan_lc'}{$p_modulename} > $modules{'portage_lc'}{$p_original_modulename})
-		{
-			# - package needs some lovin - check if package/version has been masked >
-			$cat_pkg = $modules{'portage'}{$p_original_modulename}{'category'}."/".$modules{'portage'}{$p_original_modulename}{'name'};
-			
-			if (defined $pmask{'package'}{$cat_pkg}{'operator'})
+			# - found entry in package.altname >
+			if ($paltname{'portage'}{$p_original_modulename} ne "-")
 			{
-				# - package is masked >
-				if ($pmask{'package'}{$tmp}{'operator'} eq "*")
+				if ($DEBUG) { print "- Found entry for this package. Using '".$paltname{'portage'}{$p_original_modulename}."' now.\n"; }
+				
+				$p_modulename=$paltname{'portage'}{$p_original_modulename};
+				
+				if (! defined $modules{'cpan_lc'}{$p_modulename})
 				{
-					# - all versions of this package have been masked - skip >
-					if ($DEBUG) { print "All versions of this package have been masked - skip\n"; }
+					# - entry in package.altname does not match >
+					if ($DEBUG) { print "- Could not find CPAN-Module for given entry ('".$paltname{'portage'}{$p_original_modulename}."')! Please correct! Skipping..\n"; }
+					push(@need_packagealtname,$modules{'portage'}{$p_original_modulename}{'name'});
 					next;
 				}
-				elsif ($pmask{'package'}{$tmp}{'operator'} eq ">=")
-				{
-					# - all versions greater/equal than {'version'} have been masked >
-					if ($modules{'cpan_lc'}{$p_modulename} >= $pmask{'package'}{$tmp}{'version'})
-					{
-						# - cpan version has been masked - skip >
-						if ($DEBUG) { print "cpan version has been masked - skip\n"; }
-						next;
-					}
-				}
-				elsif ($pmask{'package'}{$tmp}{'operator'} eq ">")
-				{
-					# - all versions greater than {'version'} have been masked >
-					if ($modules{'cpan_lc'}{$p_modulename} > $pmask{'package'}{$tmp}{'version'})
-					{
-						# - cpan version has been masked - skip >
-						if ($DEBUG) { print "cpan version has been masked - skip\n"; }
-						next;
-					}
-				}
-				elsif ($pmask{'package'}{$tmp}{'operator'} eq "=")
-				{
-					# - this version has been masked >
-					if ($modules{'cpan_lc'}{$p_modulename} == $pmask{'package'}{$tmp}{'version'})
-					{
-						# - cpan version has been masked - skip >
-						if ($DEBUG) { print "cpan version has been masked - skip\n"; }
-						next;
-					}
-				}
 			}
-			
-			if ($verbose) { print $modules{'portage'}{$p_original_modulename}{'category'}."/".$modules{'portage'}{$p_original_modulename}{'name'}." needs updating. Ebuild: ".$modules{'portage_lc'}{$p_original_modulename}."; CPAN: ".$modules{'cpan_lc'}{$p_modulename}."\n"; }
-			
-			# - store packagename - it needs to be updated >
-			push(@packages2update,$modules{'portage'}{$p_original_modulename}{'category'}."/".$modules{'portage'}{$p_original_modulename}{'name'});
-			
-			if ($generate_xml)
+			else
 			{
-				$xml_packagelist_table .= "  <tr>\n";
-				$xml_packagelist_table .= "    <ti>".$modules{'portage'}{$p_original_modulename}{'name'}."</ti>\n";
-				$xml_packagelist_table .= "    <ti>".$modules{'portage_lc'}{$p_original_modulename}."</ti>\n";
-				$xml_packagelist_table .= "    <ti>".$modules{'cpan_lc'}{$p_modulename}."</ti>\n";
-				$xml_packagelist_table .= "  </tr>\n";
-			}
-			
-			if ($generate_mail)
-			{
-				$mail_packagelist_table .= "  ".$modules{'portage'}{$p_original_modulename}{'name'};
-				for(0..(35-length($modules{'portage_lc'}{$p_original_modulename})-length($p_original_modulename)))
-				{
-					$mail_packagelist_table .= " ";
-				}
-				$mail_packagelist_table .= " ".$modules{'portage_lc'}{$p_original_modulename};
-				for(0..(20-length($modules{'cpan_lc'}{$p_modulename})))
-				{
-					$mail_packagelist_table .= " ";
-				}
-				$mail_packagelist_table .= " ".$modules{'cpan_lc'}{$p_modulename};
-				$mail_packagelist_table .= "\n";
-			}
-
-			if ($generate_html)
-			{
-				$html_packagelist_table .= "\t\t\t<tr>\n";
-				$html_packagelist_table .= "\t\t\t\t<td>".$modules{'portage'}{$p_original_modulename}{'name'}."</td>\n";
-				$html_packagelist_table .= "\t\t\t\t<td>".$modules{'portage_lc'}{$p_original_modulename}."</td>\n";
-				$html_packagelist_table .= "\t\t\t\t<td>".$modules{'cpan_lc'}{$p_modulename}."</td>\n";
-				$html_packagelist_table .= "\t\t\t</tr>\n";
+				# - Package has been marked as "non-CPAN-module" >
+				if ($DEBUG) { print "- Package '".$p_modulename."' has been marked as non-CPAN-module. Skipping.\n"; }
+				next;
 			}
 		}
 		else
 		{
-			if ($DEBUG) { print $p_original_modulename.".. ok\n"; }
+			# - no entry in package.altname found for $p_modulename >
+			if ($DEBUG) { print "- No entry in package.altname found for package '".$p_modulename."'!\n"; }
+			push(@need_packagealtname,$modules{'portage'}{$p_original_modulename}{'name'});
+			next;
 		}
+	}
+	
+	# - Package found >
+	
+	# - Convert portage version >
+	@tmp_v=split(/\./,$modules{'portage_lc'}{$p_original_modulename});
+	if ($#tmp_v > 1)
+	{
+		if ($DEBUG) { print " converting version -> ".$modules{'portage_lc'}{$p_original_modulename}; }
+		$modules{'portage_lc'}{$p_original_modulename}=$tmp_v[0].".";
+		for (1..$#tmp_v) { $modules{'portage_lc'}{$p_original_modulename}.= $tmp_v[$_]; }
+		if ($DEBUG) { print " -> ".$modules{'portage_lc'}{$p_original_modulename}."\n"; }
+	}
+	
+	# - Convert CPAN version >
+	@tmp_v=split(/\./,$modules{'cpan_lc'}{$p_modulename});
+	if ($#tmp_v > 1)
+	{
+		if ($DEBUG) { print " converting version -> ".$modules{'cpan_lc'}{$p_modulename}; }
+		$modules{'cpan_lc'}{$p_modulename}=$tmp_v[0].".";
+		for (1..$#tmp_v) { $modules{'cpan_lc'}{$p_modulename}.= $tmp_v[$_]; }
+		if ($DEBUG) { print " -> ".$modules{'cpan_lc'}{$p_modulename}."\n"; }
+	}
+	
+	# - Portage package matches CPAN package >
+	if ($modules{'cpan_lc'}{$p_modulename} > $modules{'portage_lc'}{$p_original_modulename})
+	{
+		# - package needs some lovin - check if package/version has been masked >
+		$cat_pkg = $modules{'portage'}{$p_original_modulename}{'category'}."/".$modules{'portage'}{$p_original_modulename}{'name'};
+		
+		if (defined $pmask{'package'}{$cat_pkg}{'operator'})
+		{
+			# - package is masked >
+			if ($pmask{'package'}{$tmp}{'operator'} eq "*")
+			{
+				# - all versions of this package have been masked - skip >
+				if ($DEBUG) { print "All versions of this package have been masked - skip\n"; }
+				next;
+			}
+			elsif ($pmask{'package'}{$tmp}{'operator'} eq ">=")
+			{
+				# - all versions greater/equal than {'version'} have been masked >
+				if ($modules{'cpan_lc'}{$p_modulename} >= $pmask{'package'}{$tmp}{'version'})
+				{
+					# - cpan version has been masked - skip >
+					if ($DEBUG) { print "cpan version has been masked - skip\n"; }
+					next;
+				}
+			}
+			elsif ($pmask{'package'}{$tmp}{'operator'} eq ">")
+			{
+				# - all versions greater than {'version'} have been masked >
+				if ($modules{'cpan_lc'}{$p_modulename} > $pmask{'package'}{$tmp}{'version'})
+				{
+					# - cpan version has been masked - skip >
+					if ($DEBUG) { print "cpan version has been masked - skip\n"; }
+					next;
+				}
+			}
+			elsif ($pmask{'package'}{$tmp}{'operator'} eq "=")
+			{
+				# - this version has been masked >
+				if ($modules{'cpan_lc'}{$p_modulename} == $pmask{'package'}{$tmp}{'version'})
+				{
+					# - cpan version has been masked - skip >
+					if ($DEBUG) { print "cpan version has been masked - skip\n"; }
+					next;
+				}
+			}
+		}
+		
+		if ($verbose) { print $modules{'portage'}{$p_original_modulename}{'category'}."/".$modules{'portage'}{$p_original_modulename}{'name'}." needs updating. Ebuild: ".$modules{'portage_lc'}{$p_original_modulename}."; CPAN: ".$modules{'cpan_lc'}{$p_modulename}."\n"; }
+		
+		# - store packagename - it needs to be updated >
+		push(@packages2update,$modules{'portage'}{$p_original_modulename}{'category'}."/".$modules{'portage'}{$p_original_modulename}{'name'});
+		
+		if ($generate_xml)
+		{
+			$xml_packagelist_table .= "  <tr>\n";
+			$xml_packagelist_table .= "    <ti>".$modules{'portage'}{$p_original_modulename}{'name'}."</ti>\n";
+			$xml_packagelist_table .= "    <ti>".$modules{'portage_lc'}{$p_original_modulename}."</ti>\n";
+			$xml_packagelist_table .= "    <ti>".$modules{'cpan_lc'}{$p_modulename}."</ti>\n";
+			$xml_packagelist_table .= "  </tr>\n";
+		}
+		
+		if ($generate_mail)
+		{
+			$mail_packagelist_table .= "  ".$modules{'portage'}{$p_original_modulename}{'name'};
+			for(0..(35-length($modules{'portage_lc'}{$p_original_modulename})-length($p_original_modulename)))
+			{
+				$mail_packagelist_table .= " ";
+			}
+			$mail_packagelist_table .= " ".$modules{'portage_lc'}{$p_original_modulename};
+			for(0..(20-length($modules{'cpan_lc'}{$p_modulename})))
+			{
+				$mail_packagelist_table .= " ";
+			}
+			$mail_packagelist_table .= " ".$modules{'cpan_lc'}{$p_modulename};
+			$mail_packagelist_table .= "\n";
+		}
+
+		if ($generate_html)
+		{
+			$html_packagelist_table .= "\t\t\t<tr>\n";
+			$html_packagelist_table .= "\t\t\t\t<td>".$modules{'portage'}{$p_original_modulename}{'name'}."</td>\n";
+			$html_packagelist_table .= "\t\t\t\t<td>".$modules{'portage_lc'}{$p_original_modulename}."</td>\n";
+			$html_packagelist_table .= "\t\t\t\t<td>".$modules{'cpan_lc'}{$p_modulename}."</td>\n";
+			$html_packagelist_table .= "\t\t\t</tr>\n";
+		}
+	}
+	else
+	{
+		if ($DEBUG) { print $p_original_modulename." is uptodate\n"; }
 	}
 }
 
@@ -298,7 +367,7 @@ if ($generate_xml)
 	open(FH,">outdated-cpan-packages.xml") || die ("Cannot open/write to file outdated-cpan-packages.xml");
 	print FH $xml;
 	close(FH);
-	print $green." *".$reset." done!\n";
+	print $green." *".$reset." done!\n\n";
 }
 
 # - Generate mail >
@@ -313,7 +382,7 @@ if ($generate_mail)
 	open(FH,">outdated-cpan-packages.mail") || die ("Cannot open/write to file outdated-cpan-packages.mail");
 	print FH $mail;
 	close(FH);
-	print $green." *".$reset." done!\n";
+	print $green." *".$reset." done!\n\n";
 }
 
 # - Generate html >
@@ -330,7 +399,7 @@ if ($generate_html)
 	open(FH,">outdated-cpan-packages.html") || die ("Cannot open/write to file outdated-cpan-packages.html");
 	print FH $html;
 	close(FH);
-	print $green." *".$reset." done!\n";
+	print $green." *".$reset." done!\n\n";
 }
 
 # - Generate packagelist >
@@ -344,7 +413,18 @@ if ($generate_packagelist)
 		print FH $_."\n";
 	}
 	close(FH);
-	print $green." *".$reset." done!\n";
+	print $green." *".$reset." done!\n\n";
+}
+
+# - Any packages not found? Do we need additional entries in package.altname? >
+if ($#need_packagealtname >= 0)
+{
+	print $yellow." *".$reset." ".($#need_packagealtname+1)." packages were found where a package.altname entry is missing or wrong:\n";
+	foreach (@need_packagealtname)
+	{
+		print "   - ".$_."\n";
+	}
+	print "   Please add entries for these packages to the package.altname file.\n";
 }
 
 print "\n";
@@ -380,7 +460,19 @@ sub getPerlPackages
 				# - get highest version >
 				if ($#tmp_availableVersions>-1)
 				{
-					$modules{'portage_lc'}{lc($tp)}=(sort(@tmp_availableVersions))[$#tmp_availableVersions];
+					$modules{'portage_lc_realversion'}{lc($tp)}=(sort(@tmp_availableVersions))[$#tmp_availableVersions];
+					$modules{'portage_lc'}{lc($tp)}=$modules{'portage_lc_realversion'}{lc($tp)};
+					
+					# - get rid of -rX >
+					$modules{'portage_lc'}{lc($tp)}=~s/([a-zA-Z0-9\-_\/]+)-r[0-9+]/$1/;
+					$modules{'portage_lc'}{lc($tp)}=~s/([a-zA-Z0-9\-_\/]+)-rc[0-9+]/$1/;
+					$modules{'portage_lc'}{lc($tp)}=~s/([a-zA-Z0-9\-_\/]+)_p[0-9+]/$1/;
+					
+					# - get rid of other stuff we don't want >
+					$modules{'portage_lc'}{lc($tp)}=~s/([a-zA-Z0-9\-_\/]+)_alpha/$1/;
+					$modules{'portage_lc'}{lc($tp)}=~s/([a-zA-Z0-9\-_\/]+)_beta/$1/;
+					$modules{'portage_lc'}{lc($tp)}=~s/[a-zA-Z]+$//;
+
 					$modules{'portage'}{lc($tp)}{'name'}=$tp;
 					$modules{'portage'}{lc($tp)}{'category'}=$tc;
 				}
@@ -533,22 +625,13 @@ sub getAvailableEbuilds
 
 # Description:
 # Returns version of an ebuild. (Without -rX string etc.)
-# $version = getEbuildVersionSpecial("/path/to/ebuild");
+# $version = getEbuildVersionSpecial("foo-1.23-r1.ebuild");
 sub getEbuildVersionSpecial
 {
 	my $ebuildVersion = shift;
-	$ebuildVersion =~ s/([a-zA-Z0-9\-_\/]+)-([0-9a-zA-Z\._\-]+)\.ebuild/$2/;
-	
-	# - get rid of -rX >
-	$ebuildVersion=~s/([a-zA-Z0-9\-_\/]+)-r[0-9+]/$1/;
-	$ebuildVersion=~s/([a-zA-Z0-9\-_\/]+)-rc[0-9+]/$1/;
-	$ebuildVersion=~s/([a-zA-Z0-9\-_\/]+)_p[0-9+]/$1/;
-	
-	# - get rid of other stuff we don't want >
-	$ebuildVersion=~s/([a-zA-Z0-9\-_\/]+)_alpha/$1/;
-	$ebuildVersion=~s/([a-zA-Z0-9\-_\/]+)_beta/$1/;
-	$ebuildVersion=~s/[a-zA-Z]+$//;
-	
+	$ebuildVersion=substr($ebuildVersion,0,length($ebuildVersion)-7);
+	$ebuildVersion =~ s/^([a-zA-Z0-9\-_\/\+]*)-([0-9\.]+[a-zA-Z]?)([\-r|\-rc|_alpha|_beta|_pre|_p]?)/$2$3/;
+		
 	return $ebuildVersion;
 }
 
@@ -609,7 +692,7 @@ up2date-ng - Compare module versions (ebuild vs CPAN)
 
 =head1 VERSION
 
-This document refers to version 0.13 of up2date-ng
+This document refers to version 0.14 of up2date-ng
 
 =head1 SYNOPSIS
 
