@@ -4,9 +4,9 @@
 #
 # up2date-ng.pl
 #
-# date        : 2006-04-21
+# date        : 2006-04-22
 # author      : Christian Hartmann <ian@gentoo.org>
-# version     : 0.12
+# version     : 0.13
 # license     : GPL-2
 # description : Scripts that compares the versions of perl packages in portage
 #               with the version of the packages on CPAN
@@ -32,18 +32,21 @@ use Getopt::Long;
 Getopt::Long::Configure("bundling");
 
 # - init vars & contants >
-my $VERSION			= "0.12";
+my $VERSION			= "0.13";
 my $portdir			= getParamFromFile(getFileContents("/etc/make.conf"),"PORTDIR","lastseen") || "/usr/portage";
 my @scan_portage_categories	= qw(dev-perl perl-core);
+my $package_mask_file		= "up2date_package.mask";
 my @timeData			= localtime(time);
 my %modules			= ();
 my @tmp_availableVersions	= ();
 my @packages2update		= ();
 my @tmp_v			= ();
+my %pmask			= ();
 my $p_modulename		= "";
 my $xml_packagelist_table	= "";
 my $mail_packagelist_table	= "";
 my $html_packagelist_table	= "";
+my $cat_pkg			= "";
 my $DEBUG			= 0;
 my $generate_xml		= 0;
 my $generate_mail		= 0;
@@ -51,6 +54,7 @@ my $generate_html		= 0;
 my $generate_packagelist	= 0;
 my $generate_all		= 0;
 my $verbose			= 0;
+my $tmp;
 my $mod;
 
 # - init colors >
@@ -81,6 +85,63 @@ if ($generate_all)
 	$generate_packagelist=1;
 }
 if ($generate_xml+$generate_mail+$generate_html+$generate_packagelist+$DEBUG+$verbose == 0) { printUsage(); }
+
+# - Parse up2date_package.mask >
+if (-f $package_mask_file)
+{
+	print $green." *".$reset." parsing ".$package_mask_file."\n";
+	
+	$pmask{'all'} = getFileContents($package_mask_file);
+	
+	foreach my $line (split(/\n/,$pmask{'all'}))
+	{
+		$line=~s/[ |\t]+$//; # remove trailing whitespaces and tabs
+	
+		if (substr($line,0,2) eq ">=")
+		{
+			# - block package versions greater/equal then given version (e.g. >=dev-perl/Video-Info-0.999) >
+			$tmp=substr($line,2,length($line)-2);
+			$tmp=~s/([a-zA-Z\-]+)\/([a-zA-Z\-]+)-([0-9a-zA-Z\._\-]+)/$1\/$2/;
+			$pmask{'package'}{$tmp}{'version'}=$3;
+			$pmask{'package'}{$tmp}{'operator'}=">=";
+		}
+		elsif (substr($line,0,1) eq ">")
+		{
+			# - block package versions greater then given version (e.g. >dev-perl/Video-Info-0.993) >
+			$tmp=substr($line,1,length($line)-1);
+			$tmp=~s/([a-zA-Z\-]+)\/([a-zA-Z\-]+)-([0-9a-zA-Z\._\-]+)/$1\/$2/;
+			$pmask{'package'}{$tmp}{'version'}=$3;
+			$pmask{'package'}{$tmp}{'operator'}=">";
+		}
+		elsif (substr($line,0,1) eq "=")
+		{
+			# - block one package version (e.g. =dev-perl/Video-Info-0.999) >
+			$tmp=substr($line,1,length($line)-1);
+			$tmp=~s/([a-zA-Z\-]+)\/([a-zA-Z\-]+)-([0-9a-zA-Z\._\-]+)/$1\/$2/;
+			$pmask{'package'}{$tmp}{'version'}=$3;
+			$pmask{'package'}{$tmp}{'operator'}="=";
+		}
+		else
+		{
+			# - block whole package (e.g. dev-perl/Video-Info) >
+			$tmp=$line;
+			$pmask{'package'}{$tmp}{'operator'}="*";
+			$pmask{'package'}{$tmp}{'version'}=0;
+		}
+		
+		if ($DEBUG)
+		{
+			print "package: ".$tmp."\n";
+			print "pmask{'package'}{'".$tmp."'}{'version'} : ".$pmask{'package'}{$tmp}{'version'}."\n";
+			print "pmask{'package'}{'".$tmp."'}{'operator'}: ".$pmask{'package'}{$tmp}{'operator'}."\n";
+			print "\n";
+		}
+	}
+}
+else
+{
+	print $green." *".$reset." No package.mask file available - Skipping\n";
+}
 
 # - get package/version info from portage and cpan >
 print "\n";
@@ -129,7 +190,50 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}})
 		# - Portage package matches CPAN package >
 		if ($modules{'cpan_lc'}{$p_modulename} > $modules{'portage_lc'}{$p_original_modulename})
 		{
-			# - package needs some lovin >
+			# - package needs some lovin - check if package/version has been masked >
+			$cat_pkg = $modules{'portage'}{$p_original_modulename}{'category'}."/".$modules{'portage'}{$p_original_modulename}{'name'};
+			
+			if (defined $pmask{'package'}{$cat_pkg}{'operator'})
+			{
+				# - package is masked >
+				if ($pmask{'package'}{$tmp}{'operator'} eq "*")
+				{
+					# - all versions of this package have been masked - skip >
+					if ($DEBUG) { print "All versions of this package have been masked - skip\n"; }
+					next;
+				}
+				elsif ($pmask{'package'}{$tmp}{'operator'} eq ">=")
+				{
+					# - all versions greater/equal than {'version'} have been masked >
+					if ($modules{'cpan_lc'}{$p_modulename} >= $pmask{'package'}{$tmp}{'version'})
+					{
+						# - cpan version has been masked - skip >
+						if ($DEBUG) { print "cpan version has been masked - skip\n"; }
+						next;
+					}
+				}
+				elsif ($pmask{'package'}{$tmp}{'operator'} eq ">")
+				{
+					# - all versions greater than {'version'} have been masked >
+					if ($modules{'cpan_lc'}{$p_modulename} > $pmask{'package'}{$tmp}{'version'})
+					{
+						# - cpan version has been masked - skip >
+						if ($DEBUG) { print "cpan version has been masked - skip\n"; }
+						next;
+					}
+				}
+				elsif ($pmask{'package'}{$tmp}{'operator'} eq "=")
+				{
+					# - this version has been masked >
+					if ($modules{'cpan_lc'}{$p_modulename} == $pmask{'package'}{$tmp}{'version'})
+					{
+						# - cpan version has been masked - skip >
+						if ($DEBUG) { print "cpan version has been masked - skip\n"; }
+						next;
+					}
+				}
+			}
+			
 			if ($verbose) { print $modules{'portage'}{$p_original_modulename}{'category'}."/".$modules{'portage'}{$p_original_modulename}{'name'}." needs updating. Ebuild: ".$modules{'portage_lc'}{$p_original_modulename}."; CPAN: ".$modules{'cpan_lc'}{$p_modulename}."\n"; }
 			
 			# - store packagename - it needs to be updated >
@@ -257,7 +361,7 @@ sub getPerlPackages
 	my $dhp;
 	my $tc;
 	my $tp;
-
+	
 	foreach $tc (@scan_portage_categories)
 	{
 		$dhp = new DirHandle($portdir."/".$tc);
@@ -505,7 +609,7 @@ up2date-ng - Compare module versions (ebuild vs CPAN)
 
 =head1 VERSION
 
-This document refers to version 0.12 of up2date-ng
+This document refers to version 0.13 of up2date-ng
 
 =head1 SYNOPSIS
 
