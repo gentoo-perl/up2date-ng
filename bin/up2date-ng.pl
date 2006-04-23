@@ -4,9 +4,9 @@
 #
 # up2date-ng.pl
 #
-# date        : 2006-04-22
+# date        : 2006-04-23
 # author      : Christian Hartmann <ian@gentoo.org>
-# version     : 0.14
+# version     : 0.15
 # license     : GPL-2
 # description : Scripts that compares the versions of perl packages in portage
 #               with the version of the packages on CPAN
@@ -32,7 +32,7 @@ use Getopt::Long;
 Getopt::Long::Configure("bundling");
 
 # - init vars & contants >
-my $VERSION			= "0.14";
+my $VERSION			= "0.15";
 my $portdir			= getParamFromFile(getFileContents("/etc/make.conf"),"PORTDIR","lastseen") || "/usr/portage";
 my @scan_portage_categories	= qw(dev-perl perl-core);
 my $package_mask_file		= "up2date_package.mask";
@@ -194,8 +194,6 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}})
 {
 	if ($DEBUG) { print $p_original_modulename."\n"; }
 	$p_modulename=$p_original_modulename;
-	#$p_modulename=~s/-/::/g;
-	
 	
 	if (! $modules{'cpan_lc'}{$p_modulename}) 
 	{
@@ -246,16 +244,6 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}})
 		$modules{'portage_lc'}{$p_original_modulename}=$tmp_v[0].".";
 		for (1..$#tmp_v) { $modules{'portage_lc'}{$p_original_modulename}.= $tmp_v[$_]; }
 		if ($DEBUG) { print " -> ".$modules{'portage_lc'}{$p_original_modulename}."\n"; }
-	}
-	
-	# - Convert CPAN version >
-	@tmp_v=split(/\./,$modules{'cpan_lc'}{$p_modulename});
-	if ($#tmp_v > 1)
-	{
-		if ($DEBUG) { print " converting version -> ".$modules{'cpan_lc'}{$p_modulename}; }
-		$modules{'cpan_lc'}{$p_modulename}=$tmp_v[0].".";
-		for (1..$#tmp_v) { $modules{'cpan_lc'}{$p_modulename}.= $tmp_v[$_]; }
-		if ($DEBUG) { print " -> ".$modules{'cpan_lc'}{$p_modulename}."\n"; }
 	}
 	
 	# - Portage package matches CPAN package >
@@ -639,32 +627,49 @@ sub getEbuildVersionSpecial
 sub getCPANPackages
 {
 	my $cpan_pn	= "";
+	my @tmp_v	= ();
 	
 	for $mod (CPAN::Shell->expand("Module","/./"))
 	{
 		if ( (defined $mod->cpan_version) && ($mod->cpan_version ne "undef") )
 		{
+			# - Fetch CPAN-filename and cut out the filename of the tarball.
+			#   We are not using $mod->id here because doing so would end up
+			#   missing a lot of our ebuilds/packages >
 			$cpan_pn = $mod->cpan_file;
 			$cpan_pn =~ s|.*/||;
-			# Right now both are MODULE-FOO-VERSION-EXT
+			
+			# - Right now both are "MODULE-FOO-VERSION-EXT" >
 			my $cpan_version = $cpan_pn;
-			# Drop -VERSION-EXT from cpan_pn
+			
+			# - Drop "-VERSION-EXT" from cpan_pn >
 			$cpan_pn =~ s/(?:-?)?(?:v?[\d\.]+[a-z]?)?\.(?:tar|tgz|zip|bz2|gz|tar\.gz)?$//;
-			$cpan_version =~ s/$cpan_pn(?:-?)//;
+			
+			# - Drop "MODULE-FOO-" from version >
+			$cpan_version = substr($cpan_version,length($cpan_pn)+1,length($cpan_version)-length($cpan_pn)-1);
 			$cpan_version =~ s/\.(?:tar|tgz|zip|bz2|gz|tar\.gz)?$//;
-
-			#MPC $cpan_pn = $mod->id;
-			#MPC $modules{'cpan'}{$cpan_pn}=$mod->cpan_version;
-			$modules{'cpan'}{$cpan_pn} = $cpan_version;
-			$modules{'cpan_lc'}{lc($cpan_pn)} = $cpan_version;
-			#MPC $modules{'cpan_lc'}{lc($cpan_pn)}=$mod->cpan_version;
 			
 			# - Remove any leading/trailing stuff (like "v" in "v5.2.0") we don't want >
-
-			$modules{'cpan'}{$cpan_pn}=~s/^[a-zA-Z]+//;
-			$modules{'cpan'}{$cpan_pn}=~s/[a-zA-Z]+$//;
-			$modules{'cpan_lc'}{lc($cpan_pn)}=~s/^[a-zA-Z]+//;
-			$modules{'cpan_lc'}{lc($cpan_pn)}=~s/[a-zA-Z]+$//;
+			$cpan_version=~s/^[a-zA-Z]+//;
+			$cpan_version=~s/[a-zA-Z]+$//;
+			
+			# - Convert CPAN version >
+			@tmp_v=split(/\./,$cpan_version);
+			if ($#tmp_v > 1)
+			{
+				if ($DEBUG) { print " converting version -> ".$cpan_version; }
+				$cpan_version=$tmp_v[0].".";
+				for (1..$#tmp_v) { $cpan_version.= $tmp_v[$_]; }
+				if ($DEBUG) { print " -> ".$cpan_version."\n"; }
+			}
+			
+			if ($cpan_version eq "") { $cpan_version=0; }
+			
+			if (! defined $modules{'cpan'}{$cpan_pn} || $cpan_version > $modules{'cpan'}{$cpan_pn})
+			{
+				$modules{'cpan'}{$cpan_pn} = $cpan_version;
+				$modules{'cpan_lc'}{lc($cpan_pn)} = $cpan_version;
+			}
 		}
 	}
 	return 0;
@@ -704,7 +709,7 @@ up2date-ng - Compare module versions (ebuild vs CPAN)
 
 =head1 VERSION
 
-This document refers to version 0.14 of up2date-ng
+This document refers to version 0.15 of up2date-ng
 
 =head1 SYNOPSIS
 

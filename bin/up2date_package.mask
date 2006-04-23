@@ -1,1 +1,11 @@
+# This file can be used to mask packages so that even if there
+# are updates available on cpan the update will not be listed.
+#
+# The operators "=", ">" and ">=" are available and work pretty
+# much the same as in the package.mask file used by portage.
+#
+# Example to block all packages greater than given:
+# >dev-perl/foo-0.123
+
 =dev-perl/Video-Info-0.999
+
