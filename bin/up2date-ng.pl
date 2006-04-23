@@ -194,9 +194,10 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}})
 {
 	if ($DEBUG) { print $p_original_modulename."\n"; }
 	$p_modulename=$p_original_modulename;
-	$p_modulename=~s/-/::/g;
+	#$p_modulename=~s/-/::/g;
 	
-	if (! defined $modules{'cpan_lc'}{$p_modulename})
+	
+	if (! $modules{'cpan_lc'}{$p_modulename}) 
 	{
 		# - Could not find a matching package name - probably not a CPAN-module >
 		if ($DEBUG) { print "- Could not find CPAN-Module ('".$p_modulename."') for package '".$p_original_modulename."'!\n"; }
@@ -643,18 +644,29 @@ sub getCPANPackages
 	{
 		if ( (defined $mod->cpan_version) && ($mod->cpan_version ne "undef") )
 		{
-			$cpan_pn = $mod->id;
-			$modules{'cpan'}{$cpan_pn}=$mod->cpan_version;
-			$modules{'cpan_lc'}{lc($cpan_pn)}=$mod->cpan_version;
+			$cpan_pn = $mod->cpan_file;
+			$cpan_pn =~ s|.*/||;
+			# Right now both are MODULE-FOO-VERSION-EXT
+			my $cpan_version = $cpan_pn;
+			# Drop -VERSION-EXT from cpan_pn
+			$cpan_pn =~ s/(?:-?)?(?:v?[\d\.]+[a-z]?)?\.(?:tar|tgz|zip|bz2|gz|tar\.gz)?$//;
+			$cpan_version =~ s/$cpan_pn(?:-?)//;
+			$cpan_version =~ s/\.(?:tar|tgz|zip|bz2|gz|tar\.gz)?$//;
+
+			#MPC $cpan_pn = $mod->id;
+			#MPC $modules{'cpan'}{$cpan_pn}=$mod->cpan_version;
+			$modules{'cpan'}{$cpan_pn} = $cpan_version;
+			$modules{'cpan_lc'}{lc($cpan_pn)} = $cpan_version;
+			#MPC $modules{'cpan_lc'}{lc($cpan_pn)}=$mod->cpan_version;
 			
 			# - Remove any leading/trailing stuff (like "v" in "v5.2.0") we don't want >
+
 			$modules{'cpan'}{$cpan_pn}=~s/^[a-zA-Z]+//;
 			$modules{'cpan'}{$cpan_pn}=~s/[a-zA-Z]+$//;
 			$modules{'cpan_lc'}{lc($cpan_pn)}=~s/^[a-zA-Z]+//;
 			$modules{'cpan_lc'}{lc($cpan_pn)}=~s/[a-zA-Z]+$//;
 		}
 	}
-	
 	return 0;
 }
 

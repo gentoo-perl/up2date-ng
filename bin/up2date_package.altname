@@ -14,11 +14,14 @@
 # E.g.:
 # XML-Sablot		XML::Sablotron
 
-XML-Sablot		XML::Sablotron
-perl-ldap		Net::LDAP
-CPAN-Mini-Phalanx	CPAN::Mini::Phalanx100
-PodParser		Pod::Parser
+XML-Sablot		XML-Sablotron
+CPAN-Mini-Phalanx	CPAN-Mini-Phalanx100
+PodParser		Pod-Parser
 Boulder			Stone
 adocman			-
 Audio-CD-disc-cover	-
-
+crypt-des-ede3		Crypt-DES_EDE3
+DateManip		Date-Manip
+DelimMatch		Text-DelimMatch
+CursesWidgets		-
+File-Spec		PathTools

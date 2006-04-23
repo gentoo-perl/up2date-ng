@@ -1,1 +1,1 @@
->=dev-perl/Video-Info-0.993
+=dev-perl/Video-Info-0.999
