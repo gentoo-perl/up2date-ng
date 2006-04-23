@@ -631,7 +631,7 @@ sub getCPANPackages
 	
 	for $mod (CPAN::Shell->expand("Module","/./"))
 	{
-		if ( (defined $mod->cpan_version) && ($mod->cpan_version ne "undef") )
+		if (defined $mod->cpan_version)
 		{
 			# - Fetch CPAN-filename and cut out the filename of the tarball.
 			#   We are not using $mod->id here because doing so would end up
@@ -639,36 +639,55 @@ sub getCPANPackages
 			$cpan_pn = $mod->cpan_file;
 			$cpan_pn =~ s|.*/||;
 			
+			if ($mod->cpan_version eq "undef" && ($cpan_pn=~m/ / || $cpan_pn eq "" || ! $cpan_pn ))
+			{
+				# - invalid line - skip that one >
+				next;
+			}
+			
 			# - Right now both are "MODULE-FOO-VERSION-EXT" >
 			my $cpan_version = $cpan_pn;
 			
 			# - Drop "-VERSION-EXT" from cpan_pn >
 			$cpan_pn =~ s/(?:-?)?(?:v?[\d\.]+[a-z]?)?\.(?:tar|tgz|zip|bz2|gz|tar\.gz)?$//;
 			
-			# - Drop "MODULE-FOO-" from version >
-			$cpan_version = substr($cpan_version,length($cpan_pn)+1,length($cpan_version)-length($cpan_pn)-1);
-			$cpan_version =~ s/\.(?:tar|tgz|zip|bz2|gz|tar\.gz)?$//;
-			
-			# - Remove any leading/trailing stuff (like "v" in "v5.2.0") we don't want >
-			$cpan_version=~s/^[a-zA-Z]+//;
-			$cpan_version=~s/[a-zA-Z]+$//;
-			
-			# - Convert CPAN version >
-			@tmp_v=split(/\./,$cpan_version);
-			if ($#tmp_v > 1)
+			if ( length(lc($cpan_version)) >= length(lc($cpan_pn)) )
 			{
-				if ($DEBUG) { print " converting version -> ".$cpan_version; }
-				$cpan_version=$tmp_v[0].".";
-				for (1..$#tmp_v) { $cpan_version.= $tmp_v[$_]; }
-				if ($DEBUG) { print " -> ".$cpan_version."\n"; }
-			}
-			
-			if ($cpan_version eq "") { $cpan_version=0; }
-			
-			if (! defined $modules{'cpan'}{$cpan_pn} || $cpan_version > $modules{'cpan'}{$cpan_pn})
-			{
-				$modules{'cpan'}{$cpan_pn} = $cpan_version;
-				$modules{'cpan_lc'}{lc($cpan_pn)} = $cpan_version;
+				# - Drop "MODULE-FOO-" from version >
+				if (length(lc($cpan_version)) == length(lc($cpan_pn)))
+				{
+					$cpan_version=0;
+				}
+				else
+				{
+					$cpan_version = substr($cpan_version,length(lc($cpan_pn))+1,length(lc($cpan_version))-length(lc($cpan_pn))-1);
+				}
+				if (defined $cpan_version)
+				{
+					$cpan_version =~ s/\.(?:tar|tgz|zip|bz2|gz|tar\.gz)?$//;
+					
+					# - Remove any leading/trailing stuff (like "v" in "v5.2.0") we don't want >
+					$cpan_version=~s/^[a-zA-Z]+//;
+					$cpan_version=~s/[a-zA-Z]+$//;
+					
+					# - Convert CPAN version >
+					@tmp_v=split(/\./,$cpan_version);
+					if ($#tmp_v > 1)
+					{
+						if ($DEBUG) { print " converting version -> ".$cpan_version; }
+						$cpan_version=$tmp_v[0].".";
+						for (1..$#tmp_v) { $cpan_version.= $tmp_v[$_]; }
+						if ($DEBUG) { print " -> ".$cpan_version."\n"; }
+					}
+					
+					if ($cpan_version eq "") { $cpan_version=0; }
+					
+					if (! defined $modules{'cpan'}{$cpan_pn} || $cpan_version > $modules{'cpan'}{$cpan_pn})
+					{
+						$modules{'cpan'}{$cpan_pn} = $cpan_version;
+						$modules{'cpan_lc'}{lc($cpan_pn)} = $cpan_version;
+					}
+				}
 			}
 		}
 	}

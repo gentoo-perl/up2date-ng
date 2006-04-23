@@ -12,7 +12,9 @@
 # we use for the ebuild add a line like that:
 # ebuild-packagename	cpan-packagename
 # E.g.:
-# XML-Sablot		XML::Sablotron
+# XML-Sablot		XML-Sablotron
+#
+# (Remember to replace "::" with "-" for cpan packages.)
 
 XML-Sablot		XML-Sablotron
 CPAN-Mini-Phalanx	CPAN-Mini-Phalanx100
@@ -43,3 +45,10 @@ SGMLSpm			SGMLSpmii
 Term-ANSIColor		ANSIColor
 Text-ChaSen		-
 CGI			CGI.pm
+Net-SSLeay		Net_SSLeay.pm
+Net-Kismet		-
+
+
+# On cpan, but not in the CPAN dadtabase/index:
+p5-Palm			-
+
