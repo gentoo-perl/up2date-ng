@@ -25,3 +25,22 @@ DateManip		Date-Manip
 DelimMatch		Text-DelimMatch
 CursesWidgets		-
 File-Spec		PathTools
+XML-Grove		XML_Grove
+gimp-perl		Gimp
+glib-perl		Glib
+gnome2-perl		Gnome2
+gnome2-vfs-perl		Gnome2-VFS
+gtk2-perl		Gtk2
+ImageInfo		Image-Info
+ImageSize		Image-Size
+Locale-gettext		gettext
+Net-SSLeay		Net_SSLeay
+OLE-StorageLite		OLE-Storage_Lite
+perl-tk			Tk
+perltidy		Perl-Tidy
+RPM			Perl-RPM
+sdl-perl		SDL_perl
+SGMLSpm			SGMLSpmii
+Term-ANSIColor		ANSIColor
+Text-ChaSen		-
+
