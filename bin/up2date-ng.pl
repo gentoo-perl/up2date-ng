@@ -456,10 +456,11 @@ sub getPerlPackages
 					$modules{'portage_lc'}{lc($tp)}=~s/([a-zA-Z0-9\-_\/]+)-r[0-9+]/$1/;
 					$modules{'portage_lc'}{lc($tp)}=~s/([a-zA-Z0-9\-_\/]+)-rc[0-9+]/$1/;
 					$modules{'portage_lc'}{lc($tp)}=~s/([a-zA-Z0-9\-_\/]+)_p[0-9+]/$1/;
+					$modules{'portage_lc'}{lc($tp)}=~s/([a-zA-Z0-9\-_\/]+)_pre[0-9+]/$1/;
 					
 					# - get rid of other stuff we don't want >
-					$modules{'portage_lc'}{lc($tp)}=~s/([a-zA-Z0-9\-_\/]+)_alpha/$1/;
-					$modules{'portage_lc'}{lc($tp)}=~s/([a-zA-Z0-9\-_\/]+)_beta/$1/;
+					$modules{'portage_lc'}{lc($tp)}=~s/([a-zA-Z0-9\-_\/]+)_alpha[0-9+]?/$1/;
+					$modules{'portage_lc'}{lc($tp)}=~s/([a-zA-Z0-9\-_\/]+)_beta[0-9+]?/$1/;
 					$modules{'portage_lc'}{lc($tp)}=~s/[a-zA-Z]+$//;
 
 					$modules{'portage'}{lc($tp)}{'name'}=$tp;
