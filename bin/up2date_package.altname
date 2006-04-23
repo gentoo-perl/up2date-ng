@@ -47,8 +47,30 @@ Text-ChaSen		-
 CGI			CGI.pm
 Net-SSLeay		Net_SSLeay.pm
 Net-Kismet		-
+perlsieve		-
+aww			-
+cdk-perl		-
+Cflow			-
+CUflow			-
+digest-base		Digest
+Eidetic			-
+frontier-rpc		-
+gtk-perl-glade		-
+gtk2-fu			Gtk2Fu
+Gtk2-Html2		-
+HTML-Object		-
+jcode_pl		-
+JKFlow			-
+perl-PBS		-
+perlrapi		-
+pgperl			-
+SNMP_Session		-
+Test-Builder-Tester	Test-Simple
+Video-Frequencies	-
+Video-ivtv		-
+wxperl			Wx
 
-
-# On cpan, but not in the CPAN dadtabase/index:
+# On cpan, but not in the CPAN database/index:
 p5-Palm			-
+mime-construct		-
 
