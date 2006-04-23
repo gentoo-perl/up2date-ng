@@ -683,11 +683,8 @@ sub getCPANPackages
 					
 					if ($cpan_version eq "") { $cpan_version=0; }
 					
-					if (! defined $modules{'cpan'}{$cpan_pn} || $cpan_version > $modules{'cpan'}{$cpan_pn})
-					{
-						$modules{'cpan'}{$cpan_pn} = $cpan_version;
-						$modules{'cpan_lc'}{lc($cpan_pn)} = $cpan_version;
-					}
+					$modules{'cpan'}{$cpan_pn} = $cpan_version;
+					$modules{'cpan_lc'}{lc($cpan_pn)} = $cpan_version;
 				}
 			}
 		}
