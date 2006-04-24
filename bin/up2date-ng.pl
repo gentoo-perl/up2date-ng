@@ -4,9 +4,9 @@
 #
 # up2date-ng.pl
 #
-# date        : 2006-04-23
+# date        : 2006-04-24
 # author      : Christian Hartmann <ian@gentoo.org>
-# version     : 0.15
+# version     : 0.16
 # license     : GPL-2
 # description : Scripts that compares the versions of perl packages in portage
 #               with the version of the packages on CPAN
@@ -32,7 +32,7 @@ use Getopt::Long;
 Getopt::Long::Configure("bundling");
 
 # - init vars & contants >
-my $VERSION			= "0.15";
+my $VERSION			= "0.16";
 my $portdir			= getParamFromFile(getFileContents("/etc/make.conf"),"PORTDIR","lastseen") || "/usr/portage";
 my @scan_portage_categories	= qw(dev-perl perl-core);
 my $package_mask_file		= "up2date_package.mask";
@@ -56,6 +56,7 @@ my $generate_mail		= 0;
 my $generate_html		= 0;
 my $generate_packagelist	= 0;
 my $generate_all		= 0;
+my $force_cpan_reload		= 0;
 my $verbose			= 0;
 my $tmp;
 my $mod;
@@ -75,6 +76,7 @@ GetOptions(
 	'generate-html'		=> \$generate_html,
 	'generate-packagelist'	=> \$generate_packagelist,
 	'generate-all'		=> \$generate_all,
+	'force-cpan-reload'	=> \$force_cpan_reload,
 	'debug'			=> \$DEBUG,
 	'verbose|v'		=> \$verbose,
 	'help|h'		=> sub { printUsage(); }
@@ -184,7 +186,7 @@ else
 # - get package/version info from portage and cpan >
 print "\n";
 print $green." *".$reset." getting infos from CPAN\n";
-getCPANPackages();
+getCPANPackages($force_cpan_reload);
 print "\n";
 print $green." *".$reset." getting package information from portage-tree\n";
 getPerlPackages();
@@ -627,8 +629,15 @@ sub getEbuildVersionSpecial
 
 sub getCPANPackages
 {
-	my $cpan_pn	= "";
-	my @tmp_v	= ();
+	my $force_cpan_reload	= shift;
+	my $cpan_pn		= "";
+	my @tmp_v		= ();
+	
+	if ($force_cpan_reload)
+	{
+		# - User forced reload of the CPAN index >
+		CPAN::Index->force_reload();
+	}
 	
 	for $mod (CPAN::Shell->expand("Module","/./"))
 	{
@@ -710,6 +719,7 @@ sub printUsage
 	print "                           (using template_outdated-cpan-packages.html)\n";
 	print "  --generate-packagelist : generate list of outdated packages\n";
 	print "  --generate-all         : enables generation on xml, mail, html and packagelist\n";
+	print "  --force-cpan-reload    : forces reload of the CPAN indexes\n";
 	print "  -v, --verbose          : be a bit more verbose\n";
 	print "  --debug                : show debug information\n";
 	print "  -h, --help             : show this help\n";
@@ -726,7 +736,7 @@ up2date-ng - Compare module versions (ebuild vs CPAN)
 
 =head1 VERSION
 
-This document refers to version 0.15 of up2date-ng
+This document refers to version 0.16 of up2date-ng
 
 =head1 SYNOPSIS
 
@@ -753,6 +763,8 @@ ebuilds could be versionbumped.
   --generate-packagelist   generate list of outdated packages
 
   --generate-all           enables generation on xml, mail, html and packagelist
+
+  --force-cpan-reload      forces reload of the CPAN indexes
 
   -v, --verbose            be a bit more verbose
 
