@@ -329,7 +329,7 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}})
 		if ($generate_xml)
 		{
 			$xml_packagelist_table .= "  <tr>\n";
-			$xml_packagelist_table .= "    <ti> <uri link=\"http://search.cpan.org/search?query=$p_original_modulename\&mode=module\">".$modules{'portage'}{$p_original_modulename}{'name'}."</uri></ti>\n";
+			$xml_packagelist_table .= "    <ti><uri link=\"http://search.cpan.org/search?query=".$p_original_modulename."&amp;mode=module\">".$modules{'portage'}{$p_original_modulename}{'name'}."</uri></ti>\n";
 			$xml_packagelist_table .= "    <ti align=\"right\">".$modules{'portage_lc'}{$p_original_modulename}."</ti>\n";
 			$xml_packagelist_table .= "    <ti align=\"right\">".$modules{'cpan_lc'}{$p_modulename}."</ti>\n";
 			$xml_packagelist_table .= "  </tr>\n";
@@ -354,7 +354,7 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}})
 		if ($generate_html)
 		{
 			$html_packagelist_table .= "\t\t\t<tr>\n";
-			$html_packagelist_table .= "\t\t\t\t<td><a href=\"http://search.cpan.org/search?query=$p_original_modulename\&mode=module\">".$modules{'portage'}{$p_original_modulename}{'name'}."</td>\n";
+			$html_packagelist_table .= "\t\t\t\t<td><a href=\"http://search.cpan.org/search?query=".$p_original_modulename."&amp;mode=module\">".$modules{'portage'}{$p_original_modulename}{'name'}."</td>\n";
 			$html_packagelist_table .= "\t\t\t\t<td align=\"right\">".$modules{'portage_lc'}{$p_original_modulename}."</td>\n";
 			$html_packagelist_table .= "\t\t\t\t<td align=\"right\">".$modules{'cpan_lc'}{$p_modulename}."</td>\n";
 			$html_packagelist_table .= "\t\t\t</tr>\n";
