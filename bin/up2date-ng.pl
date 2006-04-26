@@ -33,7 +33,7 @@ Getopt::Long::Configure("bundling");
 
 # - init vars & contants >
 my $VERSION			= "0.16";
-my $portdir			= getParamFromFile(getFileContents("/etc/make.conf"),"PORTDIR","lastseen") || "/usr/portage";
+my $portdir			= getPortdir();
 my @scan_portage_categories	= qw(dev-perl perl-core);
 my $package_mask_file		= "up2date_package.mask";
 my $package_altname_file	= "up2date_package.altname";
@@ -66,6 +66,7 @@ my $yellow	= color("yellow bold");
 my $green	= color("bold green");
 my $white	= color("bold white");
 my $cyan	= color("bold cyan");
+my $red		= color("bold red");
 my $reset	= color("reset");
 
 # - get options >
@@ -90,6 +91,31 @@ if ($generate_all)
 	$generate_packagelist=1;
 }
 if ($generate_xml+$generate_mail+$generate_html+$generate_packagelist+$DEBUG+$verbose == 0) { printUsage(); }
+
+# - Print settings and do some basic checks >
+if (-d $portdir)
+{
+	print $green." *".$reset." PORTDIR: ".$portdir."\n";
+}
+else
+{
+	print $red." *".$reset." PORTDIR not set or incorrect!\n";
+	exit(0);
+}
+print $green." *".$reset." checking for dirs..\n";
+foreach my $this_category (@scan_portage_categories)
+{
+	print "   ".$portdir."/".$this_category;
+	if (-d $portdir."/".$this_category)
+	{
+		print ".. ok\n";
+	}
+	else
+	{
+		print ".. directory does not exist - aborting!\n";
+		exit(0);
+	}
+}
 
 # - Parse up2date_package.mask >
 if (-f $package_mask_file)
@@ -150,7 +176,7 @@ if (-f $package_mask_file)
 }
 else
 {
-	print $green." *".$reset." No package.mask file available - Skipping\n";
+	print $yellow." *".$reset." No package.mask file available - Skipping\n";
 }
 
 # - Parse up2date_package.mask >
@@ -180,7 +206,7 @@ if (-f $package_altname_file)
 }
 else
 {
-	print $green." *".$reset." No package.altname file available - Skipping\n";
+	print $yellow." *".$reset." No package.altname file available - Skipping\n";
 }
 
 # - get package/version info from portage and cpan >
@@ -699,6 +725,18 @@ sub getCPANPackages
 		}
 	}
 	return 0;
+}
+
+sub getPortdir
+{
+	my $portdir	= getParamFromFile(getFileContents("/etc/make.conf"),"PORTDIR","lastseen");
+	
+	if (! $portdir)
+	{
+		$portdir = getParamFromFile(getFileContents("/etc/make.globals"),"PORTDIR","lastseen");
+	}
+	
+	return $portdir;
 }
 
 sub printHeader
