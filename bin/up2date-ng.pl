@@ -304,8 +304,8 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}})
 		{
 			$xml_packagelist_table .= "  <tr>\n";
 			$xml_packagelist_table .= "    <ti>".$modules{'portage'}{$p_original_modulename}{'name'}."</ti>\n";
-			$xml_packagelist_table .= "    <ti>".$modules{'portage_lc'}{$p_original_modulename}."</ti>\n";
-			$xml_packagelist_table .= "    <ti>".$modules{'cpan_lc'}{$p_modulename}."</ti>\n";
+			$xml_packagelist_table .= "    <ti align=\"right\">".$modules{'portage_lc'}{$p_original_modulename}."</ti>\n";
+			$xml_packagelist_table .= "    <ti align=\"right\">".$modules{'cpan_lc'}{$p_modulename}."</ti>\n";
 			$xml_packagelist_table .= "  </tr>\n";
 		}
 		
@@ -329,8 +329,8 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}})
 		{
 			$html_packagelist_table .= "\t\t\t<tr>\n";
 			$html_packagelist_table .= "\t\t\t\t<td>".$modules{'portage'}{$p_original_modulename}{'name'}."</td>\n";
-			$html_packagelist_table .= "\t\t\t\t<td>".$modules{'portage_lc'}{$p_original_modulename}."</td>\n";
-			$html_packagelist_table .= "\t\t\t\t<td>".$modules{'cpan_lc'}{$p_modulename}."</td>\n";
+			$html_packagelist_table .= "\t\t\t\t<td align=\"right\">".$modules{'portage_lc'}{$p_original_modulename}."</td>\n";
+			$html_packagelist_table .= "\t\t\t\t<td align=\"right\">".$modules{'cpan_lc'}{$p_modulename}."</td>\n";
 			$html_packagelist_table .= "\t\t\t</tr>\n";
 		}
 	}
@@ -349,7 +349,7 @@ if ($generate_xml)
 {
 	print $green." *".$reset." called with --generate-xml\n";
 	my $xml = getFileContents("template_outdated-cpan-packages.xml");
-	my $dateXML = int($timeData[5]+1900)."-".($timeData[4]+1)."-".$timeData[3];
+	my $dateXML = sprintf("%u-%02u-%02u",int($timeData[5]+1900),($timeData[4]+1),$timeData[3]);
 	chomp($xml_packagelist_table);
 	$xml =~ s/<TMPL_PACKAGELIST_TABLE>/$xml_packagelist_table/;
 	$xml =~ s/<TMPL_VAR_DATE>/$dateXML/g;
@@ -381,7 +381,7 @@ if ($generate_html)
 {
 	print $green." *".$reset." called with --generate-html\n";
 	my $html = getFileContents("template_outdated-cpan-packages.html");
-	my $dateHTML = int($timeData[5]+1900)."-".($timeData[4]+1)."-".$timeData[3];
+	my $dateHTML = sprintf("%u-%02u-%02u",int($timeData[5]+1900),($timeData[4]+1),$timeData[3]);
 	chomp($html_packagelist_table);
 	$html =~ s/<TMPL_PACKAGELIST_TABLE>/$html_packagelist_table/;
 	$html =~ s/<TMPL_VAR_DATE>/$dateHTML/g;
