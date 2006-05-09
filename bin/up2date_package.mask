@@ -8,4 +8,4 @@
 # >dev-perl/foo-0.123
 
 =dev-perl/Video-Info-0.999
-
+=dev-perl/Unix-Syslog-0.99
