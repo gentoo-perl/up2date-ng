@@ -52,6 +52,10 @@ will curb some of the bugs to boot).
   <TMPL_PACKAGELIST_TABLE>
 </table>
 
+<p>
+Total packages suspected as outdated: <TMPL_NUMBER_OUTDATED>
+</p>
+
 </body>
 </section>
 </chapter>

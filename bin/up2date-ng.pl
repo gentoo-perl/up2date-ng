@@ -376,9 +376,11 @@ if ($generate_xml)
 	print $green." *".$reset." called with --generate-xml\n";
 	my $xml = getFileContents("template_outdated-cpan-packages.xml");
 	my $dateXML = sprintf("%u-%02u-%02u",int($timeData[5]+1900),($timeData[4]+1),$timeData[3]);
+	my $numberOutdated = ($#packages2update+1);
 	chomp($xml_packagelist_table);
 	$xml =~ s/<TMPL_PACKAGELIST_TABLE>/$xml_packagelist_table/;
 	$xml =~ s/<TMPL_VAR_DATE>/$dateXML/g;
+	$xml =~ s/<TMPL_NUMBER_OUTDATED>/$numberOutdated/;
 	
 	print $green." *".$reset." creating outdated-cpan-packages.xml\n";
 	open(FH,">outdated-cpan-packages.xml") || die ("Cannot open/write to file outdated-cpan-packages.xml");
@@ -408,9 +410,11 @@ if ($generate_html)
 	print $green." *".$reset." called with --generate-html\n";
 	my $html = getFileContents("template_outdated-cpan-packages.html");
 	my $dateHTML = sprintf("%u-%02u-%02u",int($timeData[5]+1900),($timeData[4]+1),$timeData[3]);
+	my $numberOutdated = ($#packages2update+1);
 	chomp($html_packagelist_table);
 	$html =~ s/<TMPL_PACKAGELIST_TABLE>/$html_packagelist_table/;
 	$html =~ s/<TMPL_VAR_DATE>/$dateHTML/g;
+	$html =~ s/<TMPL_NUMBER_OUTDATED>/$numberOutdated/;
 	
 	print $green." *".$reset." creating outdated-cpan-packages.html\n";
 	open(FH,">outdated-cpan-packages.html") || die ("Cannot open/write to file outdated-cpan-packages.html");
