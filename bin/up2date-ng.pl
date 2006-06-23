@@ -4,9 +4,9 @@
 #
 # up2date-ng.pl
 #
-# date        : 2006-04-24
+# date        : 2006-06-23
 # author      : Christian Hartmann <ian@gentoo.org>
-# version     : 0.16
+# version     : 0.17
 # license     : GPL-2
 # description : Scripts that compares the versions of perl packages in portage
 #               with the version of the packages on CPAN
@@ -32,7 +32,7 @@ use Getopt::Long;
 Getopt::Long::Configure("bundling");
 
 # - init vars & contants >
-my $VERSION			= "0.16";
+my $VERSION			= "0.17";
 my $portdir			= getPortdir();
 my @scan_portage_categories	= qw(dev-perl perl-core);
 my $package_mask_file		= "up2date_package.mask";
@@ -50,6 +50,7 @@ my $xml_packagelist_table	= "";
 my $mail_packagelist_table	= "";
 my $html_packagelist_table	= "";
 my $cat_pkg			= "";
+my $cpan_searchstring		= "";
 my $DEBUG			= 0;
 my $generate_xml		= 0;
 my $generate_mail		= 0;
@@ -326,10 +327,14 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}})
 		# - store packagename - it needs to be updated >
 		push(@packages2update,$modules{'portage'}{$p_original_modulename}{'category'}."/".$modules{'portage'}{$p_original_modulename}{'name'});
 		
+		# - generate searchstring for search.cpan.org >
+		$cpan_searchstring=$p_original_modulename;
+		$cpan_searchstring=~s/-/::/g;
+			
 		if ($generate_xml)
 		{
 			$xml_packagelist_table .= "  <tr>\n";
-			$xml_packagelist_table .= "    <ti><uri link=\"http://search.cpan.org/search?query=".$p_original_modulename."&amp;mode=all\">".$modules{'portage'}{$p_original_modulename}{'name'}."</uri></ti>\n";
+			$xml_packagelist_table .= "    <ti><uri link=\"http://search.cpan.org/search?query=".$cpan_searchstring."&amp;mode=all\">".$modules{'portage'}{$p_original_modulename}{'name'}."</uri></ti>\n";
 			$xml_packagelist_table .= "    <ti align=\"right\">".$modules{'portage_lc'}{$p_original_modulename}."</ti>\n";
 			$xml_packagelist_table .= "    <ti align=\"right\">".$modules{'cpan_lc'}{$p_modulename}."</ti>\n";
 			$xml_packagelist_table .= "  </tr>\n";
@@ -354,7 +359,7 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}})
 		if ($generate_html)
 		{
 			$html_packagelist_table .= "\t\t\t<tr>\n";
-			$html_packagelist_table .= "\t\t\t\t<td><a href=\"http://search.cpan.org/search?query=".$p_original_modulename."&amp;mode=all\">".$modules{'portage'}{$p_original_modulename}{'name'}."</td>\n";
+			$html_packagelist_table .= "\t\t\t\t<td><a href=\"http://search.cpan.org/search?query=".$cpan_searchstring."&amp;mode=all\">".$modules{'portage'}{$p_original_modulename}{'name'}."</td>\n";
 			$html_packagelist_table .= "\t\t\t\t<td align=\"right\">".$modules{'portage_lc'}{$p_original_modulename}."</td>\n";
 			$html_packagelist_table .= "\t\t\t\t<td align=\"right\">".$modules{'cpan_lc'}{$p_modulename}."</td>\n";
 			$html_packagelist_table .= "\t\t\t</tr>\n";
@@ -778,7 +783,7 @@ up2date-ng - Compare module versions (ebuild vs CPAN)
 
 =head1 VERSION
 
-This document refers to version 0.16 of up2date-ng
+This document refers to version 0.17 of up2date-ng
 
 =head1 SYNOPSIS
 
