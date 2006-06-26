@@ -7,7 +7,7 @@
 <title>Outdated CPAN Packages (Ebuild vs CPAN)</title>
 
 <author title="Author">
-  Script generated
+  Script generated using up2date-ng version <TMPL_VAR_UP2DATE-NG-VERSION>
 </author>
 
 <abstract>

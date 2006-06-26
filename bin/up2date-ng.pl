@@ -4,9 +4,9 @@
 #
 # up2date-ng.pl
 #
-# date        : 2006-06-23
+# date        : 2006-06-26
 # author      : Christian Hartmann <ian@gentoo.org>
-# version     : 0.17
+# version     : 0.18
 # license     : GPL-2
 # description : Scripts that compares the versions of perl packages in portage
 #               with the version of the packages on CPAN
@@ -32,11 +32,12 @@ use Getopt::Long;
 Getopt::Long::Configure("bundling");
 
 # - init vars & contants >
-my $VERSION			= "0.17";
+my $VERSION			= "0.18";
 my $portdir			= getPortdir();
-my @scan_portage_categories	= qw(dev-perl perl-core);
+my @scan_portage_categories	= ();
 my $package_mask_file		= "up2date_package.mask";
 my $package_altname_file	= "up2date_package.altname";
+my $category_list_file		= "up2date_category.list";
 my @timeData			= localtime(time);
 my %modules			= ();
 my @tmp_availableVersions	= ();
@@ -208,6 +209,30 @@ if (-f $package_altname_file)
 else
 {
 	print $yellow." *".$reset." No package.altname file available - Skipping\n";
+}
+
+# - Parse up2date_category.list >
+if (-f $category_list_file)
+{
+	print $green." *".$reset." parsing ".$category_list_file."\n";
+	
+	foreach my $line (split(/\n/,getFileContents($category_list_file)))
+	{
+		$line=~s/^[ |\t]+//;	# leading whitespaces and tabs
+		$line=~s/[ |\t]+$//;	# trailing whitespaces and tabs
+		$line=~s/#(.*)//g;	# remove comments
+		
+		if ($line ne "" && $line ne " ")
+		{
+			push (@scan_portage_categories,$line);
+			if ($DEBUG) { print "adding '".$line."' to categories-searchlist\n"; }
+		}
+	}
+}
+else
+{
+	print $red." *".$reset." No category.list file available - Aborting\n";
+	exit(0);
 }
 
 # - get package/version info from portage and cpan >
@@ -386,6 +411,7 @@ if ($generate_xml)
 	$xml =~ s/<TMPL_PACKAGELIST_TABLE>/$xml_packagelist_table/;
 	$xml =~ s/<TMPL_VAR_DATE>/$dateXML/g;
 	$xml =~ s/<TMPL_NUMBER_OUTDATED>/$numberOutdated/;
+	$xml =~ s/<TMPL_VAR_UP2DATE-NG-VERSION>/$VERSION/;
 	
 	print $green." *".$reset." creating outdated-cpan-packages.xml\n";
 	open(FH,">outdated-cpan-packages.xml") || die ("Cannot open/write to file outdated-cpan-packages.xml");
@@ -401,6 +427,7 @@ if ($generate_mail)
 	my $mail = getFileContents("template_outdated-cpan-packages.mail");
 	$mail_packagelist_table .= "\nTotal packages suspected as outdated: ".($#packages2update+1)."\n";
 	$mail =~ s/<TMPL_PACKAGELIST_TABLE>/$mail_packagelist_table/;
+	$mail =~ s/<TMPL_VAR_UP2DATE-NG-VERSION>/$VERSION/;
 	
 	print $green." *".$reset." creating outdated-cpan-packages.mail\n";
 	open(FH,">outdated-cpan-packages.mail") || die ("Cannot open/write to file outdated-cpan-packages.mail");
@@ -420,6 +447,7 @@ if ($generate_html)
 	$html =~ s/<TMPL_PACKAGELIST_TABLE>/$html_packagelist_table/;
 	$html =~ s/<TMPL_VAR_DATE>/$dateHTML/g;
 	$html =~ s/<TMPL_NUMBER_OUTDATED>/$numberOutdated/;
+	$html =~ s/<TMPL_VAR_UP2DATE-NG-VERSION>/$VERSION/;
 	
 	print $green." *".$reset." creating outdated-cpan-packages.html\n";
 	open(FH,">outdated-cpan-packages.html") || die ("Cannot open/write to file outdated-cpan-packages.html");
@@ -783,7 +811,7 @@ up2date-ng - Compare module versions (ebuild vs CPAN)
 
 =head1 VERSION
 
-This document refers to version 0.17 of up2date-ng
+This document refers to version 0.18 of up2date-ng
 
 =head1 SYNOPSIS
 
