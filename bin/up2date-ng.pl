@@ -4,9 +4,9 @@
 #
 # up2date-ng.pl
 #
-# date        : 2006-06-26
+# date        : 2006-07-06
 # author      : Christian Hartmann <ian@gentoo.org>
-# version     : 0.18
+# version     : 0.19
 # license     : GPL-2
 # description : Scripts that compares the versions of perl packages in portage
 #               with the version of the packages on CPAN
@@ -32,7 +32,7 @@ use Getopt::Long;
 Getopt::Long::Configure("bundling");
 
 # - init vars & contants >
-my $VERSION			= "0.18";
+my $VERSION			= "0.19";
 my $portdir			= getPortdir();
 my @scan_portage_categories	= ();
 my $package_mask_file		= "up2date_package.mask";
@@ -74,15 +74,16 @@ my $reset	= color("reset");
 # - get options >
 printHeader();
 GetOptions(
-	'generate-xml'		=> \$generate_xml,
-	'generate-mail'		=> \$generate_mail,
-	'generate-html'		=> \$generate_html,
-	'generate-packagelist'	=> \$generate_packagelist,
-	'generate-all'		=> \$generate_all,
-	'force-cpan-reload'	=> \$force_cpan_reload,
 	'debug'			=> \$DEBUG,
-	'verbose|v'		=> \$verbose,
-	'help|h'		=> sub { printUsage(); }
+	'force-cpan-reload'	=> \$force_cpan_reload,
+	'generate-all'		=> \$generate_all,
+	'generate-html'		=> \$generate_html,
+	'generate-mail'		=> \$generate_mail,
+	'generate-packagelist'	=> \$generate_packagelist,
+	'generate-xml'		=> \$generate_xml,
+	'help|h'		=> sub { printUsage(); },
+	'portdir=s'		=> \$portdir,
+	'verbose|v'		=> \$verbose
 	) || printUsage();
 
 if ($generate_all)
@@ -795,6 +796,7 @@ sub printUsage
 	print "  --generate-packagelist : generate list of outdated packages\n";
 	print "  --generate-all         : enables generation on xml, mail, html and packagelist\n";
 	print "  --force-cpan-reload    : forces reload of the CPAN indexes\n";
+	print "  --portdir              : use given PORTDIR instead of the one defined in make.conf\n";
 	print "  -v, --verbose          : be a bit more verbose\n";
 	print "  --debug                : show debug information\n";
 	print "  -h, --help             : show this help\n";
@@ -811,7 +813,7 @@ up2date-ng - Compare module versions (ebuild vs CPAN)
 
 =head1 VERSION
 
-This document refers to version 0.18 of up2date-ng
+This document refers to version 0.19 of up2date-ng
 
 =head1 SYNOPSIS
 
@@ -840,6 +842,8 @@ ebuilds could be versionbumped.
   --generate-all           enables generation on xml, mail, html and packagelist
 
   --force-cpan-reload      forces reload of the CPAN indexes
+
+  --portdir                use given PORTDIR instead of the one defined in make.conf
 
   -v, --verbose            be a bit more verbose
 
