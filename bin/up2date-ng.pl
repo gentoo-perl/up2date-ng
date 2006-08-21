@@ -4,9 +4,9 @@
 #
 # up2date-ng.pl
 #
-# date        : 2006-07-06
+# date        : 2006-08-21
 # author      : Christian Hartmann <ian@gentoo.org>
-# version     : 0.19
+# version     : 0.20
 # license     : GPL-2
 # description : Scripts that compares the versions of perl packages in portage
 #               with the version of the packages on CPAN
@@ -32,7 +32,7 @@ use Getopt::Long;
 Getopt::Long::Configure("bundling");
 
 # - init vars & contants >
-my $VERSION			= "0.19";
+my $VERSION			= "0.20";
 my $portdir			= getPortdir();
 my @scan_portage_categories	= ();
 my $package_mask_file		= "up2date_package.mask";
@@ -60,6 +60,7 @@ my $generate_packagelist	= 0;
 my $generate_all		= 0;
 my $force_cpan_reload		= 0;
 my $verbose			= 0;
+my $numberPackagesTotal		= 0;
 my $tmp;
 my $mod;
 
@@ -397,8 +398,9 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}})
 	}
 }
 
+$numberPackagesTotal=(keys %{$modules{'portage_lc'}});
 print "\n";
-print $green." *".$reset." total packages suspected as outdated: ".($#packages2update+1)."\n";
+print $green." *".$reset." total packages suspected as outdated: ".($#packages2update+1)." of ".$numberPackagesTotal."\n";
 print "\n";
 
 # - Generate xml >
@@ -413,6 +415,7 @@ if ($generate_xml)
 	$xml =~ s/<TMPL_VAR_DATE>/$dateXML/g;
 	$xml =~ s/<TMPL_NUMBER_OUTDATED>/$numberOutdated/;
 	$xml =~ s/<TMPL_VAR_UP2DATE-NG-VERSION>/$VERSION/;
+	$xml =~ s/<TMPL_NUMBER_PACKAGES_TOTAL>/$numberPackagesTotal/;
 	
 	print $green." *".$reset." creating outdated-cpan-packages.xml\n";
 	open(FH,">outdated-cpan-packages.xml") || die ("Cannot open/write to file outdated-cpan-packages.xml");
@@ -426,7 +429,7 @@ if ($generate_mail)
 {
 	print $green." *".$reset." called with --generate-mail\n";
 	my $mail = getFileContents("template_outdated-cpan-packages.mail");
-	$mail_packagelist_table .= "\nTotal packages suspected as outdated: ".($#packages2update+1)."\n";
+	$mail_packagelist_table .= "\nTotal packages suspected as outdated: ".($#packages2update+1)." of ".$numberPackagesTotal."\n";
 	$mail =~ s/<TMPL_PACKAGELIST_TABLE>/$mail_packagelist_table/;
 	$mail =~ s/<TMPL_VAR_UP2DATE-NG-VERSION>/$VERSION/;
 	
@@ -449,7 +452,8 @@ if ($generate_html)
 	$html =~ s/<TMPL_VAR_DATE>/$dateHTML/g;
 	$html =~ s/<TMPL_NUMBER_OUTDATED>/$numberOutdated/;
 	$html =~ s/<TMPL_VAR_UP2DATE-NG-VERSION>/$VERSION/;
-	
+	$html =~ s/<TMPL_NUMBER_PACKAGES_TOTAL>/$numberPackagesTotal/;
+
 	print $green." *".$reset." creating outdated-cpan-packages.html\n";
 	open(FH,">outdated-cpan-packages.html") || die ("Cannot open/write to file outdated-cpan-packages.html");
 	print FH $html;
@@ -813,7 +817,7 @@ up2date-ng - Compare module versions (ebuild vs CPAN)
 
 =head1 VERSION
 
-This document refers to version 0.19 of up2date-ng
+This document refers to version 0.20 of up2date-ng
 
 =head1 SYNOPSIS
 
