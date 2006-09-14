@@ -4,9 +4,9 @@
 #
 # up2date-ng.pl
 #
-# date        : 2006-08-21
+# date        : 2006-09-14
 # author      : Christian Hartmann <ian@gentoo.org>
-# version     : 0.20
+# version     : 0.21
 # license     : GPL-2
 # description : Scripts that compares the versions of perl packages in portage
 #               with the version of the packages on CPAN
@@ -32,7 +32,7 @@ use Getopt::Long;
 Getopt::Long::Configure("bundling");
 
 # - init vars & contants >
-my $VERSION			= "0.20";
+my $VERSION			= "0.21";
 my $portdir			= getPortdir();
 my @scan_portage_categories	= ();
 my $package_mask_file		= "up2date_package.mask";
@@ -61,6 +61,7 @@ my $generate_all		= 0;
 my $force_cpan_reload		= 0;
 my $verbose			= 0;
 my $numberPackagesTotal		= 0;
+my $hasVirtual			= 0;
 my $tmp;
 my $mod;
 
@@ -354,6 +355,16 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}})
 		# - store packagename - it needs to be updated >
 		push(@packages2update,$modules{'portage'}{$p_original_modulename}{'category'}."/".$modules{'portage'}{$p_original_modulename}{'name'});
 		
+		# - check for virtuals >
+		if (-d $portdir."/virtual/perl-".$modules{'portage'}{$p_original_modulename}{'name'})
+		{
+			$hasVirtual=1;
+		}
+		else
+		{
+			$hasVirtual=0;
+		}
+		
 		# - generate searchstring for search.cpan.org >
 		$cpan_searchstring=$p_original_modulename;
 		$cpan_searchstring=~s/-/::/g;
@@ -361,7 +372,14 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}})
 		if ($generate_xml)
 		{
 			$xml_packagelist_table .= "  <tr>\n";
-			$xml_packagelist_table .= "    <ti><uri link=\"http://search.cpan.org/search?query=".$cpan_searchstring."&amp;mode=all\">".$modules{'portage'}{$p_original_modulename}{'name'}."</uri></ti>\n";
+			if ($hasVirtual)
+			{
+				$xml_packagelist_table .= "    <ti><uri link=\"http://search.cpan.org/search?query=".$cpan_searchstring."&amp;mode=all\">".$modules{'portage'}{$p_original_modulename}{'name'}."</uri> (virtual/perl-".$modules{'portage'}{$p_original_modulename}{'name'}.")</ti>\n";
+			}
+			else
+			{
+				$xml_packagelist_table .= "    <ti><uri link=\"http://search.cpan.org/search?query=".$cpan_searchstring."&amp;mode=all\">".$modules{'portage'}{$p_original_modulename}{'name'}."</uri></ti>\n";
+			}
 			$xml_packagelist_table .= "    <ti align=\"right\">".$modules{'portage_lc'}{$p_original_modulename}."</ti>\n";
 			$xml_packagelist_table .= "    <ti align=\"right\">".$modules{'cpan_lc'}{$p_modulename}."</ti>\n";
 			$xml_packagelist_table .= "  </tr>\n";
@@ -370,7 +388,8 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}})
 		if ($generate_mail)
 		{
 			$mail_packagelist_table .= "  ".$modules{'portage'}{$p_original_modulename}{'name'};
-			for(0..(35-length($modules{'portage_lc'}{$p_original_modulename})-length($p_original_modulename)))
+			if ($hasVirtual) { $mail_packagelist_table.=" *"; }
+			for(0..(35-($hasVirtual*2)-length($modules{'portage_lc'}{$p_original_modulename})-length($p_original_modulename)))
 			{
 				$mail_packagelist_table .= " ";
 			}
@@ -386,7 +405,14 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}})
 		if ($generate_html)
 		{
 			$html_packagelist_table .= "\t\t\t<tr>\n";
-			$html_packagelist_table .= "\t\t\t\t<td><a href=\"http://search.cpan.org/search?query=".$cpan_searchstring."&amp;mode=all\">".$modules{'portage'}{$p_original_modulename}{'name'}."</td>\n";
+			if ($hasVirtual)
+			{
+				$html_packagelist_table .= "\t\t\t\t<td><a href=\"http://search.cpan.org/search?query=".$cpan_searchstring."&amp;mode=all\">".$modules{'portage'}{$p_original_modulename}{'name'}."</a> (virtual/perl-".$modules{'portage'}{$p_original_modulename}{'name'}.")</td>\n";
+			}
+			else
+			{
+				$html_packagelist_table .= "\t\t\t\t<td><a href=\"http://search.cpan.org/search?query=".$cpan_searchstring."&amp;mode=all\">".$modules{'portage'}{$p_original_modulename}{'name'}."</a></td>\n";
+			}
 			$html_packagelist_table .= "\t\t\t\t<td align=\"right\">".$modules{'portage_lc'}{$p_original_modulename}."</td>\n";
 			$html_packagelist_table .= "\t\t\t\t<td align=\"right\">".$modules{'cpan_lc'}{$p_modulename}."</td>\n";
 			$html_packagelist_table .= "\t\t\t</tr>\n";
@@ -817,7 +843,7 @@ up2date-ng - Compare module versions (ebuild vs CPAN)
 
 =head1 VERSION
 
-This document refers to version 0.20 of up2date-ng
+This document refers to version 0.21 of up2date-ng
 
 =head1 SYNOPSIS
 
