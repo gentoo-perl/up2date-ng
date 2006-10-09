@@ -188,7 +188,7 @@ if (-f $package_altname_file) {
 	}
 }
 else {
-	print_info("No package.altname file available - Skipping\n");
+	print_info("No up2date_package.altname file available - Skipping\n");
 }
 
 # - Parse up2date_category.list >
@@ -232,14 +232,14 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}}) {
 		
 		# - Look for an entry in up2date_package.altname for this package >
 		if ($paltname{'portage'}{$p_original_modulename}) {
-			# - found entry in package.altname >
+			# - found entry in up2date_package.altname >
 			if ($paltname{'portage'}{$p_original_modulename} ne "-") {
 				if ($DEBUG) { print "- Found entry for this package. Using '".$paltname{'portage'}{$p_original_modulename}."' now.\n"; }
 				
 				$p_modulename=$paltname{'portage'}{$p_original_modulename};
 				
 				if (! defined $modules{'cpan_lc'}{$p_modulename}) {
-					# - entry in package.altname does not match >
+					# - entry in up2date_package.altname does not match >
 					if ($DEBUG) { print "- Could not find CPAN-Module for given entry ('".$paltname{'portage'}{$p_original_modulename}."')! Please correct! Skipping..\n"; }
 					push(@need_packagealtname,$modules{'portage'}{$p_original_modulename}{'name'});
 					next;
@@ -252,8 +252,8 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}}) {
 			}
 		}
 		else {
-			# - no entry in package.altname found for $p_modulename >
-			if ($DEBUG) { print "- No entry in package.altname found for package '".$p_modulename."'!\n"; }
+			# - no entry in up2date_package.altname found for $p_modulename >
+			if ($DEBUG) { print "- No entry in up2date_package.altname found for package '".$p_modulename."'!\n"; }
 			push(@need_packagealtname,$modules{'portage'}{$p_original_modulename}{'name'});
 			next;
 		}
@@ -443,13 +443,13 @@ if ($generate_packagelist) {
 	print_ok("done!\n\n");
 }
 
-# - Any packages not found? Do we need additional entries in package.altname? >
+# - Any packages not found? Do we need additional entries in up2date_package.altname? >
 if ($#need_packagealtname >= 0) {
-	print_info("".($#need_packagealtname+1)." packages were found where a package.altname entry is missing or wrong:\n");
+	print_info("".($#need_packagealtname+1)." packages were found where a up2date_package.altname entry is missing or wrong:\n");
 	foreach (@need_packagealtname) {
 		print "   - ".$_."\n";
 	}
-	print "   Please add entries for these packages to the package.altname file.\n";
+	print "   Please add entries for these packages to the up2date_package.altname file.\n";
 }
 
 print "\n";
