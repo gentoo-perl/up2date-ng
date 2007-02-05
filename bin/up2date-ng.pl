@@ -4,9 +4,12 @@
 #
 # up2date-ng.pl
 #
-# date        : 2006-09-24
+# date        : 2007-02-05
 # author      : Christian Hartmann <ian@gentoo.org>
-# version     : 0.22
+# contributors: Michael Cummings <mcummings@gentoo.org>
+#               Yuval Yaari <yuval@gentoo.org>
+#               Daniel Westermann-Clark <daniel@acceleration.net>
+# version     : 0.23
 # license     : GPL-2
 # description : Scripts that compares the versions of perl packages in portage
 #               with the version of the packages on CPAN
@@ -32,7 +35,7 @@ use Getopt::Long;
 Getopt::Long::Configure("bundling");
 
 # - init vars & contants >
-my $VERSION			= "0.22";
+my $VERSION			= "0.23";
 my $portdir			= getPortdir();
 my @scan_portage_categories	= ();
 my $up2date_config_dir		= "./";
@@ -690,8 +693,11 @@ sub getCPANPackages {
 					
 					if ($cpan_version eq "") { $cpan_version=0; }
 					
-					$modules{'cpan'}{$cpan_pn} = $cpan_version;
-					$modules{'cpan_lc'}{lc($cpan_pn)} = $cpan_version;
+					# - Don't replace versions from CPAN if they're older than the one we've got >
+					if (! exists($modules{'cpan'}{$cpan_pn}) || $modules{'cpan'}{$cpan_pn} < $cpan_version) {
+						$modules{'cpan'}{$cpan_pn} = $cpan_version;
+						$modules{'cpan_lc'}{lc($cpan_pn)} = $cpan_version;
+					}
 				}
 			}
 		}
@@ -798,6 +804,14 @@ ebuilds could be versionbumped.
 
 Christian Hartmann <ian@gentoo.org>
 
+=head1 CONTRIBUTORS
+
+Many thanks go out to all the people listed below:
+
+Michael Cummings <mcummings@gentoo.org>
+Yuval Yaari <yuval@gentoo.org>
+Daniel Westermann-Clark <daniel@acceleration.net>
+
 =head1 TODO
 
 Put your stuff here and poke me.
@@ -809,7 +823,7 @@ Please report bugs via http://bugs.gentoo.org/ or https://bugs.gentoo.org/
 =head1 LICENSE
 
 up2date-ng - Compare module versions (ebuild vs CPAN)
-Copyright (C) 2006  Christian Hartmann
+Copyright (C) 2007  Christian Hartmann
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
