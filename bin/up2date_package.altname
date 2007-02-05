@@ -69,6 +69,8 @@ Test-Builder-Tester	Test-Simple
 Video-Frequencies	-
 Video-ivtv		-
 wxperl			Wx
+PortageXS		-
+perlmenu		-
 
 # On cpan, but not in the CPAN database/index:
 p5-Palm			-
