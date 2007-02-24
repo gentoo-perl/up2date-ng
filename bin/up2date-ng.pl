@@ -777,7 +777,7 @@ with the version of the packages on CPAN. up2date-ng is developed and used
 by the Gentoo perl-herd maintainers to keep track of which cpan related
 ebuilds could be versionbumped.
 
-=head1 AGRUMENTS
+=head1 ARGUMENTS
 
   --generate-xml           generate GuideXML file with table of outdated packages
                            (using template_outdated-cpan-packages.xml)
