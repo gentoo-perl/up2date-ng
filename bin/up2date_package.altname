@@ -71,6 +71,8 @@ Video-ivtv		-
 wxperl			Wx
 PortageXS		-
 perlmenu		-
+SpeedyCgi		-
+Template-Latex		Template-Plugin-Latex
 
 # On cpan, but not in the CPAN database/index:
 p5-Palm			-
