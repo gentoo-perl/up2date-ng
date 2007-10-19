@@ -2,14 +2,14 @@
 
 # -----------------------------------------------------------------------------
 #
-# up2date-ng.pl
+# up2date-ng
 #
-# date        : 2007-02-05
+# date        : 2007-10-19
 # author      : Christian Hartmann <ian@gentoo.org>
 # contributors: Michael Cummings <mcummings@gentoo.org>
 #               Yuval Yaari <yuval@gentoo.org>
 #               Daniel Westermann-Clark <daniel@acceleration.net>
-# version     : 0.23
+# version     : 0.24
 # license     : GPL-2
 # description : Scripts that compares the versions of perl packages in portage
 #               with the version of the packages on CPAN
@@ -32,33 +32,36 @@ use DirHandle;
 use CPAN;
 use Term::ANSIColor;
 use Getopt::Long;
+use PortageXS;
 Getopt::Long::Configure("bundling");
 
 # - init vars & contants >
-my $VERSION			= "0.23";
-my $portdir			= getPortdir();
+my $VERSION			= '0.24';
+my $pxs				= PortageXS->new();
+my $portdir			= $pxs->getPortdir();
 my @scan_portage_categories	= ();
-my $up2date_config_dir		= "./";
-my $category_list_file		= $up2date_config_dir."up2date_category.list";
-my $package_mask_file		= $up2date_config_dir."up2date_package.mask";
-my $package_altname_file	= $up2date_config_dir."up2date_package.altname";
+my $up2date_config_dir		= './';
+my $category_list_file		= $up2date_config_dir.'up2date_category.list';
+my $package_mask_file		= $up2date_config_dir.'up2date_package.mask';
+my $package_altname_file	= $up2date_config_dir.'up2date_package.altname';
 my @timeData			= localtime(time);
 my %modules			= ();
 my @tmp_availableVersions	= ();
 my @packages2update		= ();
 my @tmp_v			= ();
 my %pmask			= ();
-my @obsolete_switch		= ();
 my %paltname			= ();
 my @need_packagealtname		= ();
-my $cat_pkg			= "";
-my $cpan_searchstring		= "";
-my $html_packagelist_table	= "";
-my $mail_packagelist_table	= "";
-my $p_modulename		= "";
-my $xml_packagelist_table	= "";
+my $cat_pkg			= '';
+my $cpan_searchstring		= '';
+my $html_packagelist_table	= '';
+my $mail_packagelist_table	= '';
+my $p_modulename		= '';
+my $xml_packagelist_table	= '';
+my $bumplist_packagelist	= '';
 my $DEBUG			= 0;
 my $generate_all		= 0;
+my $generate_bumplist		= 0;
 my $generate_html		= 0;
 my $generate_mail		= 0;
 my $generate_packagelist	= 0;
@@ -75,35 +78,32 @@ GetOptions(
 	'debug'			=> \$DEBUG,
 	'force-cpan-reload'	=> \$force_cpan_reload,
 	'generate-all'		=> \$generate_all,
+	'generate-bumplist'	=> \$generate_bumplist,
 	'generate-html'		=> \$generate_html,
 	'generate-mail'		=> \$generate_mail,
 	'generate-packagelist'	=> \$generate_packagelist,
 	'generate-xml'		=> \$generate_xml,
 	'help|h'		=> sub { exit(printUsage()); },
 	'portdir=s'		=> \$portdir,
-	'verbose|v'             => \$obsolete_switch[0]
 	) or exit(printUsage());
-
-if ($obsolete_switch[0]) {
-	print_info("The -v option is now obsolete and will be removed in the next version. Please make sure your scripts do not use this option anymore!\n\n");
-}
 
 if ($generate_all) {
 	$generate_xml=1;
 	$generate_mail=1;
 	$generate_html=1;
 	$generate_packagelist=1;
+	$generate_bumplist=1;
 }
 
 # - Print settings and do some basic checks >
 if (-d $portdir) {
-	print_ok("PORTDIR: ".$portdir."\n");
+	$pxs->print_ok("PORTDIR: ".$portdir."\n");
 }
 else {
-	print_err("PORTDIR not set or incorrect!\n\n");
+	$pxs->print_err("PORTDIR not set or incorrect!\n\n");
 	exit(0);
 }
-print_ok("checking for dirs..\n");
+$pxs->print_ok("checking for dirs..\n");
 foreach my $this_category (@scan_portage_categories) {
 	print "   ".$portdir."/".$this_category;
 	if (-d $portdir."/".$this_category) {
@@ -117,41 +117,41 @@ foreach my $this_category (@scan_portage_categories) {
 
 # - Parse up2date_package.mask >
 if (-f $package_mask_file) {
-	print_ok("parsing ".$package_mask_file."\n");
+	$pxs->print_ok('parsing '.$package_mask_file."\n");
 	
-	$pmask{'all'} = getFileContents($package_mask_file);
+	$pmask{'all'} = $pxs->getFileContents($package_mask_file);
 	
 	foreach my $line (split(/\n/,$pmask{'all'})) {
 		$line=~s/^[ |\t]+//;	# leading whitespaces and tabs
 		$line=~s/[ |\t]+$//;	# trailing whitespaces and tabs
 		$line=~s/#(.*)//g;	# remove comments
 		
-		if ($line ne "") {
-			if (substr($line,0,2) eq ">=") {
+		if ($line ne '') {
+			if (substr($line,0,2) eq '>=') {
 				# - block package versions greater/equal then given version (e.g. >=dev-perl/Video-Info-0.999) >
 				$tmp=substr($line,2,length($line)-2);
 				$tmp=~s/([a-zA-Z\-]+)\/([a-zA-Z\-]+)-([0-9a-zA-Z\._\-]+)/$1\/$2/;
 				$pmask{'package'}{$tmp}{'version'}=$3;
-				$pmask{'package'}{$tmp}{'operator'}=">=";
+				$pmask{'package'}{$tmp}{'operator'}='>=';
 			}
-			elsif (substr($line,0,1) eq ">") {
+			elsif (substr($line,0,1) eq '>') {
 				# - block package versions greater then given version (e.g. >dev-perl/Video-Info-0.993) >
 				$tmp=substr($line,1,length($line)-1);
 				$tmp=~s/([a-zA-Z\-]+)\/([a-zA-Z\-]+)-([0-9a-zA-Z\._\-]+)/$1\/$2/;
 				$pmask{'package'}{$tmp}{'version'}=$3;
-				$pmask{'package'}{$tmp}{'operator'}=">";
+				$pmask{'package'}{$tmp}{'operator'}='>';
 			}
-			elsif (substr($line,0,1) eq "=") {
+			elsif (substr($line,0,1) eq '=') {
 				# - block one package version (e.g. =dev-perl/Video-Info-0.999) >
 				$tmp=substr($line,1,length($line)-1);
 				$tmp=~s/([a-zA-Z\-]+)\/([a-zA-Z\-]+)-([0-9a-zA-Z\._\-]+)/$1\/$2/;
 				$pmask{'package'}{$tmp}{'version'}=$3;
-				$pmask{'package'}{$tmp}{'operator'}="=";
+				$pmask{'package'}{$tmp}{'operator'}='=';
 			}
 			else {
 				# - block whole package (e.g. dev-perl/Video-Info) >
 				$tmp=$line;
-				$pmask{'package'}{$tmp}{'operator'}="*";
+				$pmask{'package'}{$tmp}{'operator'}='*';
 				$pmask{'package'}{$tmp}{'version'}=0;
 			}
 			
@@ -165,21 +165,21 @@ if (-f $package_mask_file) {
 	}
 }
 else {
-	print_info("No package.mask file available - Skipping\n");
+	$pxs->print_info("No package.mask file available - Skipping\n");
 }
 
 # - Parse up2date_package.mask >
 if (-f $package_altname_file) {
-	print_ok("parsing ".$package_altname_file."\n");
+	$pxs->print_ok('parsing '.$package_altname_file."\n");
 	
-	$paltname{'all'} = getFileContents($package_altname_file);
+	$paltname{'all'} = $pxs->getFileContents($package_altname_file);
 	
 	foreach my $line (split(/\n/,$paltname{'all'})) {
 		$line=~s/^[ |\t]+//;	# leading whitespaces and tabs
 		$line=~s/[ |\t]+$//;	# trailing whitespaces and tabs
 		$line=~s/#(.*)//g;	# remove comments
 		
-		if ($line ne "" && $line ne " ") {
+		if ($line ne '' && $line ne ' ') {
 			$line=~s/[ |\t]+/ /; # remove multiple whitespaces and tabs
 			my @tmp=split(/ /,$line);
 			
@@ -191,40 +191,23 @@ if (-f $package_altname_file) {
 	}
 }
 else {
-	print_info("No up2date_package.altname file available - Skipping\n");
+	$pxs->print_info("No up2date_package.altname file available - Skipping\n");
 }
 
-# - Parse up2date_category.list >
-if (-f $category_list_file) {
-	print_ok("parsing ".$category_list_file."\n");
-	
-	foreach my $line (split(/\n/,getFileContents($category_list_file))) {
-		$line=~s/^[ |\t]+//;	# leading whitespaces and tabs
-		$line=~s/[ |\t]+$//;	# trailing whitespaces and tabs
-		$line=~s/#(.*)//g;	# remove comments
-		
-		if ($line ne "" && $line ne " ") {
-			push (@scan_portage_categories,$line);
-			if ($DEBUG) { print "adding '".$line."' to categories-searchlist\n"; }
-		}
-	}
-}
-else {
-	print_err("No category.list file available - Aborting\n\n");
-	exit(0);
-}
+# - Get categorys to check >
+@scan_portage_categories=$pxs->getPortageXScategorylist('perl');
 
 # - get package/version info from portage and cpan >
 print "\n";
-print_ok("getting infos from CPAN\n");
+$pxs->print_ok("getting infos from CPAN\n");
 getCPANPackages($force_cpan_reload);
 print "\n";
-print_ok("getting package information from portage-tree\n");
+$pxs->print_ok("getting package information from portage-tree\n");
 print "\n";
 getPerlPackages();
 
 # - get some work done >
-print_ok("Available updates:\n");
+$pxs->print_ok("Available updates:\n");
 foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}}) {
 	if ($DEBUG) { print $p_original_modulename."\n"; }
 	$p_modulename=$p_original_modulename;
@@ -312,13 +295,13 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}}) {
 		}
 		
 		# - print update msg >
-		print "   ".$modules{'portage'}{$p_original_modulename}{'category'}."/".$modules{'portage'}{$p_original_modulename}{'name'}." needs updating. Ebuild: ".$modules{'portage_lc'}{$p_original_modulename}."; CPAN: ".$modules{'cpan_lc'}{$p_modulename}."\n";
+		print '   '.$modules{'portage'}{$p_original_modulename}{'category'}."/".$modules{'portage'}{$p_original_modulename}{'name'}." needs updating. Ebuild: ".$modules{'portage_lc'}{$p_original_modulename}."; CPAN: ".$modules{'cpan_lc'}{$p_modulename}."\n";
 		
 		# - store packagename - it needs to be updated >
 		push(@packages2update,$modules{'portage'}{$p_original_modulename}{'category'}."/".$modules{'portage'}{$p_original_modulename}{'name'});
 		
 		# - check for virtuals >
-		if (-d $portdir."/virtual/perl-".$modules{'portage'}{$p_original_modulename}{'name'}) {
+		if (-d $portdir.'/virtual/perl-'.$modules{'portage'}{$p_original_modulename}{'name'}) {
 			$hasVirtual=1;
 		}
 		else {
@@ -368,6 +351,18 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}}) {
 			$html_packagelist_table .= "\t\t\t\t<td align=\"right\">".$modules{'cpan_lc'}{$p_modulename}."</td>\n";
 			$html_packagelist_table .= "\t\t\t</tr>\n";
 		}
+		
+		if ($generate_bumplist) {
+			$bumplist_packagelist .= $modules{'portage'}{$p_original_modulename}{'name'}.' ';
+			if ($hasVirtual) {
+				$bumplist_packagelist .= '1 ';
+			}
+			else {
+				$bumplist_packagelist .= '0 ';
+			}
+			$bumplist_packagelist .= $modules{'portage_lc'}{$p_original_modulename}.' ';
+			$bumplist_packagelist .= $modules{'cpan_lc'}{$p_modulename}."\n";
+		}
 	}
 	else {
 		if ($DEBUG) { print $p_original_modulename." is uptodate\n"; }
@@ -376,13 +371,13 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}}) {
 
 $numberPackagesTotal=(keys %{$modules{'portage_lc'}});
 print "\n";
-print_ok("total packages suspected as outdated: ".($#packages2update+1)." of ".$numberPackagesTotal."\n");
+$pxs->print_ok("total packages suspected as outdated: ".($#packages2update+1)." of ".$numberPackagesTotal."\n");
 print "\n";
 
 # - Generate xml >
 if ($generate_xml) {
-	print_ok("called with --generate-xml\n");
-	my $xml = getFileContents("template_outdated-cpan-packages.xml");
+	$pxs->print_ok("called with --generate-xml\n");
+	my $xml = $pxs->getFileContents("template_outdated-cpan-packages.xml");
 	my $dateXML = sprintf("%u-%02u-%02u",int($timeData[5]+1900),($timeData[4]+1),$timeData[3]);
 	my $numberOutdated = ($#packages2update+1);
 	chomp($xml_packagelist_table);
@@ -392,32 +387,32 @@ if ($generate_xml) {
 	$xml =~ s/<TMPL_VAR_UP2DATE-NG-VERSION>/$VERSION/;
 	$xml =~ s/<TMPL_NUMBER_PACKAGES_TOTAL>/$numberPackagesTotal/;
 	
-	print_ok("creating outdated-cpan-packages.xml\n");
+	$pxs->print_ok("creating outdated-cpan-packages.xml\n");
 	open(FH,">outdated-cpan-packages.xml") || die ("Cannot open/write to file outdated-cpan-packages.xml");
 	print FH $xml;
 	close(FH);
-	print_ok("done!\n\n");
+	$pxs->print_ok("done!\n\n");
 }
 
 # - Generate mail >
 if ($generate_mail) {
-	print_ok("called with --generate-mail\n");
-	my $mail = getFileContents("template_outdated-cpan-packages.mail");
+	$pxs->print_ok("called with --generate-mail\n");
+	my $mail = $pxs->getFileContents("template_outdated-cpan-packages.mail");
 	$mail_packagelist_table .= "\nTotal packages suspected as outdated: ".($#packages2update+1)." of ".$numberPackagesTotal."\n";
 	$mail =~ s/<TMPL_PACKAGELIST_TABLE>/$mail_packagelist_table/;
 	$mail =~ s/<TMPL_VAR_UP2DATE-NG-VERSION>/$VERSION/;
 	
-	print_ok("creating outdated-cpan-packages.mail\n");
+	$pxs->print_ok("creating outdated-cpan-packages.mail\n");
 	open(FH,">outdated-cpan-packages.mail") || die ("Cannot open/write to file outdated-cpan-packages.mail");
 	print FH $mail;
 	close(FH);
-	print_ok("done!\n\n");
+	$pxs->print_ok("done!\n\n");
 }
 
 # - Generate html >
 if ($generate_html) {
-	print_ok("called with --generate-html\n");
-	my $html = getFileContents("template_outdated-cpan-packages.html");
+	$pxs->print_ok("called with --generate-html\n");
+	my $html = $pxs->getFileContents("template_outdated-cpan-packages.html");
 	my $dateHTML = sprintf("%u-%02u-%02u",int($timeData[5]+1900),($timeData[4]+1),$timeData[3]);
 	my $numberOutdated = ($#packages2update+1);
 	chomp($html_packagelist_table);
@@ -427,28 +422,38 @@ if ($generate_html) {
 	$html =~ s/<TMPL_VAR_UP2DATE-NG-VERSION>/$VERSION/;
 	$html =~ s/<TMPL_NUMBER_PACKAGES_TOTAL>/$numberPackagesTotal/;
 
-	print_ok("creating outdated-cpan-packages.html\n");
+	$pxs->print_ok("creating outdated-cpan-packages.html\n");
 	open(FH,">outdated-cpan-packages.html") || die ("Cannot open/write to file outdated-cpan-packages.html");
 	print FH $html;
 	close(FH);
-	print_ok("done!\n\n");
+	$pxs->print_ok("done!\n\n");
+}
+
+# - Generate bumplist >
+if ($generate_bumplist) {
+	$pxs->print_ok("called with --generate-bumplist\n");
+	$pxs->print_ok("creating outdated-cpan-packages.bumplist\n");
+	open(FH,">outdated-cpan-packages.bumplist") || die ("Cannot open/write to file outdated-cpan-packages.bumplist");
+	print FH $bumplist_packagelist;
+	close(FH);
+	$pxs->print_ok("done!\n\n");
 }
 
 # - Generate packagelist >
 if ($generate_packagelist) {
-	print_ok("called with --generate-packagelist\n");
-	print_ok("creating outdated-cpan-packages.packagelist\n");
+	$pxs->print_ok("called with --generate-packagelist\n");
+	$pxs->print_ok("creating outdated-cpan-packages.packagelist\n");
 	open(FH,">outdated-cpan-packages.packagelist") || die ("Cannot open/write to file outdated-cpan-packages.packagelist");
 	foreach (@packages2update) {
 		print FH $_."\n";
 	}
 	close(FH);
-	print_ok("done!\n\n");
+	$pxs->print_ok("done!\n\n");
 }
 
 # - Any packages not found? Do we need additional entries in up2date_package.altname? >
 if ($#need_packagealtname >= 0) {
-	print_info("".($#need_packagealtname+1)." packages were found where a up2date_package.altname entry is missing or wrong:\n");
+	$pxs->print_info("".($#need_packagealtname+1)." packages were found where a up2date_package.altname entry is missing or wrong:\n");
 	foreach (@need_packagealtname) {
 		print "   - ".$_."\n";
 	}
@@ -470,14 +475,15 @@ sub getPerlPackages {
 	my $tp;
 	
 	foreach $tc (@scan_portage_categories) {
-		$dhp = new DirHandle($portdir."/".$tc);
+		next if (!-d $portdir.'/'.$tc);
+		$dhp = new DirHandle($portdir.'/'.$tc);
 		while (defined($tp = $dhp->read)) {
 			# - not excluded and $_ is a dir?
-			if (! $excludeDirs{$tp} && -d $portdir."/".$tc."/".$tp) {
+			if (! $excludeDirs{$tp} && -d $portdir.'/'.$tc.'/'.$tp) {
 				@tmp_availableVersions=();
-				my @tmp_availableEbuilds = getAvailableEbuilds($portdir,$tc."/".$tp);
+				my @tmp_availableEbuilds = $pxs->getAvailableEbuilds($tc.'/'.$tp);
 				foreach (@tmp_availableEbuilds) {
-					push(@tmp_availableVersions,getEbuildVersion($_));
+					push(@tmp_availableVersions,$pxs->getEbuildVersion($_));
 				}
 				
 				# - get highest version >
@@ -503,139 +509,6 @@ sub getPerlPackages {
 		}
 		undef $dhp;
 	}
-}
-
-# Description:
-# Returns the value of $param. Expects filecontents in $file.
-# $valueOfKey = getParamFromFile($filecontents,$key);
-# e.g.
-# $valueOfKey = getParamFromFile(getFileContents("/path/to.ebuild","IUSE","firstseen");
-sub getParamFromFile {
-	my $file  = shift;
-	my $param = shift;
-	my $mode  = shift; # ("firstseen","lastseen") - default is "lastseen"
-	my $c     = 0;
-	my $d     = 0;
-	my @lines = ();
-	my @aTmp  = (); # temp (a)rray
-	my $sTmp  = ""; # temp (s)calar
-	my $text  = ""; # complete text/file after being cleaned up and striped
-	my $value = ""; # value of $param
-	my $this  = "";
-	
-	# - 1. split file in lines >
-	@lines = split(/\n/,$file);
-
-	# - 2 & 3 >
-	for($c=0;$c<=$#lines;$c++) {
-		# - 2. remove leading and trailing whitespaces and tabs from every line >
-		$lines[$c]=~s/^[ |\t]+//;  # leading whitespaces and tabs
-		$lines[$c]=~s/[ |\t]+$//;  # trailing whitespaces and tabs
-		
-		# - 3. remove comments >
-		$lines[$c]=~s/#(.*)//g;
-		
-		if ($lines[$c]=~/^$param="(.*)"/) {
-			# single-line with quotationmarks >
-			$value=$1;
-		
-			if ($mode eq "firstseen") {
-				# - 6. clean up value >
-				$value=~s/^[ |\t]+//; # remove leading whitespaces and tabs
-				$value=~s/[ |\t]+$//; # remove trailing whitespaces and tabs
-				$value=~s/\t/ /g;     # replace tabs with whitespaces
-				$value=~s/ {2,}/ /g;  # replace 1+ whitespaces with 1 whitespace
-				return $value;
-			}
-		}
-		elsif ($lines[$c]=~/^$param="(.*)/) {
-			# multi-line with quotationmarks >
-			$value=$1." ";
-			for($d=$c+1;$d<=$#lines;$d++) {
-				# - look for quotationmark >
-				if ($lines[$d]=~/(.*)"/) {
-					# - found quotationmark; append contents and leave loop >
-					$value.=$1;
-					last;
-				}
-				else {
-					# - no quotationmark found; append line contents to $value >
-					$value.=$lines[$d]." ";
-				}
-			}
-		
-			if ($mode eq "firstseen") {
-				# - 6. clean up value >
-				$value=~s/^[ |\t]+//; # remove leading whitespaces and tabs
-				$value=~s/[ |\t]+$//; # remove trailing whitespaces and tabs
-				$value=~s/\t/ /g;     # replace tabs with whitespaces
-				$value=~s/ {2,}/ /g;  # replace 1+ whitespaces with 1 whitespace
-				return $value;
-			}
-		}
-		elsif ($lines[$c]=~/^$param=(.*)/) {
-			# - single-line without quotationmarks >
-			$value=$1;
-			
-			if ($mode eq "firstseen") {
-				# - 6. clean up value >
-				$value=~s/^[ |\t]+//; # remove leading whitespaces and tabs
-				$value=~s/[ |\t]+$//; # remove trailing whitespaces and tabs
-				$value=~s/\t/ /g;     # replace tabs with whitespaces
-				$value=~s/ {2,}/ /g;  # replace 1+ whitespaces with 1 whitespace
-				return $value;
-			}
-		}
-	}
-	
-	# - 6. clean up value >
-	$value=~s/^[ |\t]+//; # remove leading whitespaces and tabs
-	$value=~s/[ |\t]+$//; # remove trailing whitespaces and tabs
-	$value=~s/\t/ /g;     # replace tabs with whitespaces
-	$value=~s/ {2,}/ /g;  # replace 1+ whitespaces with 1 whitespace
-	
-	return $value;
-}
-
-# Description:
-# Returnvalue is the content of the given file.
-# $filecontent = getFileContents($file);
-sub getFileContents {
-	my $content	= "";
-	open(FH,"<".$_[0]) || die("Cannot open file ".$_[0]);
-	$content = do{local $/; <FH>};
-	close(FH);
-	return $content;
-}
-
-# Description:
-# @listOfEbuilds = getAvailableEbuilds($PORTDIR, category/packagename);
-sub getAvailableEbuilds {
-	my $PORTDIR	= shift;
-	my $catPackage	= shift;
-	my @packagelist	= ();
-	
-	if (-e $PORTDIR."/".$catPackage) {
-		# - get list of ebuilds >
-		my $dh = new DirHandle($PORTDIR."/".$catPackage);
-		while (defined($_ = $dh->read)) {
-			if ($_ =~ m/(.+)\.ebuild$/) {
-				push(@packagelist,$_);
-			}
-		}
-	}
-	
-	return @packagelist;
-}
-
-# Description:
-# Returns version of an ebuild.
-# $version = getEbuildVersion("foo-1.23-r1.ebuild");
-sub getEbuildVersion {
-	my $version	= shift;
-	$version =~ s/\.ebuild$//;
-	$version =~ s/^([a-zA-Z0-9\-_\/\+]*)-([0-9\.]+[a-zA-Z]?)/$2/;
-	return $version;
 }
 
 sub getCPANPackages {
@@ -705,10 +578,6 @@ sub getCPANPackages {
 	return 0;
 }
 
-sub getPortdir {
-	return getParamFromFile(getFileContents("/etc/make.globals").getFileContents("/etc/make.conf"),"PORTDIR","lastseen");
-}
-
 sub printHeader {
 	print "\n".color("green bold")." up2date-ng".color("reset")." version ".$VERSION." - brought to you by the Gentoo perl-herd-maintainer ;-)\n";
 	print "                           Distributed under the terms of the GPL-2\n\n";
@@ -722,6 +591,7 @@ sub printUsage {
 	print "  --generate-html        : generate html file with table of outdated packages\n";
 	print "                           (using template_outdated-cpan-packages.html)\n";
 	print "  --generate-packagelist : generate list of outdated packages\n";
+	print "  --generate-bumplist    : generate list of outdated packages for bumping\n";
 	print "  --generate-all         : enables generation on xml, mail, html and packagelist\n";
 	print "  --force-cpan-reload    : forces reload of the CPAN indexes\n";
 	print "  --portdir              : use given PORTDIR instead of the one defined in make.conf\n";
@@ -732,30 +602,6 @@ sub printUsage {
 	return 0;
 }
 
-# Description:
-# Prints gentoo-style items.
-sub printColored {
-	print ' ' . color(shift) . '* ' . color("reset") . shift() , @_;
-}
-
-# Description:
-# Wrapper for printColored >
-sub print_ok {
-	printColored('green bold',shift);
-}
-
-# Description:
-# Wrapper for printColored >
-sub print_err {
-	printColored('red bold',shift);
-}
-
-# Description:
-# Wrapper for printColored >
-sub print_info {
-	printColored('yellow bold',shift);
-}
-
 # - Here comes the POD >
 
 =head1 NAME
@@ -764,7 +610,7 @@ up2date-ng - Compare module versions (ebuild vs CPAN)
 
 =head1 VERSION
 
-This document refers to version 0.22 of up2date-ng
+This document refers to version 0.24 of up2date-ng
 
 =head1 SYNOPSIS
 
@@ -789,6 +635,8 @@ ebuilds could be versionbumped.
                            (using template_outdated-cpan-packages.html)
 
   --generate-packagelist   generate list of outdated packages
+
+  --generate-bumplist      generate list of outdated packages for bumping
 
   --generate-all           enables generation on xml, mail, html and packagelist
 
