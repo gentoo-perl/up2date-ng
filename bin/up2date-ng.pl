@@ -249,6 +249,7 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}}) {
 	
 	# - Convert portage version >
 	@tmp_v=split(/\./,$modules{'portage_lc'}{$p_original_modulename});
+	$modules{'portage_lc_original-portage-version'}{$p_original_modulename}=$modules{'portage_lc'}{$p_original_modulename};
 	if ($#tmp_v > 1) {
 		if ($DEBUG) { print " converting version -> ".$modules{'portage_lc'}{$p_original_modulename}; }
 		$modules{'portage_lc'}{$p_original_modulename}=$tmp_v[0].".";
@@ -353,14 +354,14 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}}) {
 		}
 		
 		if ($generate_bumplist) {
-			$bumplist_packagelist .= $modules{'portage'}{$p_original_modulename}{'name'}.' ';
+			$bumplist_packagelist .= $modules{'portage'}{$p_original_modulename}{'category'}.'/'.$modules{'portage'}{$p_original_modulename}{'name'}.' ';
 			if ($hasVirtual) {
 				$bumplist_packagelist .= '1 ';
 			}
 			else {
 				$bumplist_packagelist .= '0 ';
 			}
-			$bumplist_packagelist .= $modules{'portage_lc'}{$p_original_modulename}.' ';
+			$bumplist_packagelist .= $modules{'portage_lc_original-portage-version'}{$p_original_modulename}.' ';
 			$bumplist_packagelist .= $modules{'cpan_lc'}{$p_modulename}."\n";
 		}
 	}
@@ -481,7 +482,7 @@ sub getPerlPackages {
 			# - not excluded and $_ is a dir?
 			if (! $excludeDirs{$tp} && -d $portdir.'/'.$tc.'/'.$tp) {
 				@tmp_availableVersions=();
-				my @tmp_availableEbuilds = $pxs->getAvailableEbuilds($tc.'/'.$tp);
+				my @tmp_availableEbuilds = $pxs->getAvailableEbuilds($tc.'/'.$tp,$portdir);
 				foreach (@tmp_availableEbuilds) {
 					push(@tmp_availableVersions,$pxs->getEbuildVersion($_));
 				}
