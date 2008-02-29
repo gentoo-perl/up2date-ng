@@ -73,6 +73,8 @@ PortageXS		-
 perlmenu		-
 SpeedyCgi		-
 Template-Latex		Template-Plugin-Latex
+WattsUp-Daemon		-
+TextToHTML		txt2html
 
 # On cpan, but not in the CPAN database/index:
 p5-Palm			-
