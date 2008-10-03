@@ -79,4 +79,16 @@ TextToHTML		txt2html
 # On cpan, but not in the CPAN database/index:
 p5-Palm			-
 mime-construct		-
+SGMLSpm			-
+Net-Google-SafeBrowsing-Blocklist	-
+VCP-autrijus		-
+Template-Latex		-
 
+# Not in CPAN
+mecab-perl		-
+
+# Old, should be removed
+FileHandle-Deluxe	-
+FileHandle-Rollback	-
+Gtk2-PodViewer		-
+Audio-Tools		-
