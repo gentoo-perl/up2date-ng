@@ -12,3 +12,7 @@
 
 # Broken per bug #198698
 =dev-perl/WWW-Bugzilla-1*
+
+# upstream: old version is 1.0.14, newer is 1.01
+# gentoo: only have 1.01
+=dev-perl/Class-MakeMethods-1.0.14
