@@ -9,3 +9,6 @@
 
 =dev-perl/Video-Info-0.999
 =dev-perl/Unix-Syslog-0.99
+
+# Broken per bug #198698
+=dev-perl/WWW-Bugzilla-1*
