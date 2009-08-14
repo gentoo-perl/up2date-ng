@@ -16,16 +16,14 @@
 #
 # (Remember to replace "::" with "-" for cpan packages.)
 
-
 ACE			AcePerl
 Audio-CD-disc-cover	-
 Authen-NTLM		NTLM
-Boulder			Stone
+#Boulder			Stone
 CGI			CGI.pm
 CPAN-Mini-Phalanx	CPAN-Mini-Phalanx100
 CUflow			-
 Cflow			-
-CursesWidgets		-
 DateManip		Date-Manip
 DelimMatch		Text-DelimMatch
 Eidetic			-
@@ -37,19 +35,13 @@ ImageSize		Image-Size
 JKFlow			-
 Locale-gettext		gettext
 Net-Kismet		-
-Net-SSLeay		Net_SSLeay
-Net-SSLeay		Net_SSLeay.pm
 OLE-StorageLite		OLE-Storage_Lite
 PodParser		Pod-Parser
 PortageXS		-
-RPM			Perl-RPM
-SGMLSpm			SGMLSpmii
 SNMP_Session		-
-SpeedyCgi		-
+SpeedyCgi		CGI-SpeedyCGI
 Template-Latex		Template-Plugin-Latex
 Term-ANSIColor		ANSIColor
-Test-Builder-Tester	Test-Simple
-Text-ChaSen		-
 TextToHTML		txt2html
 Video-Frequencies	-
 Video-ivtv		-
@@ -60,18 +52,15 @@ aww			-
 cdk-perl		-
 crypt-des-ede3		Crypt-DES_EDE3
 digest-base		Digest
-frontier-rpc		-
 gimp-perl		Gimp
 glib-perl		Glib
 gnome2-perl		Gnome2
 gnome2-vfs-perl		Gnome2-VFS
-gtk-perl-glade		-
 gtk2-fu			Gtk2Fu
 gtk2-perl		Gtk2
 jcode_pl		-
 perl-PBS		-
 perl-tk			Tk
-perlmenu		-
 perlrapi		-
 perlsieve		-
 perltidy		Perl-Tidy
@@ -82,16 +71,13 @@ wxperl			Wx
 # On cpan, but not in the CPAN database/index:
 Net-Google-SafeBrowsing-Blocklist	-
 SGMLSpm			-
-Template-Latex		-
-VCP-autrijus		-
+frontier-rpc		-
+i18n-langtags		-
 mime-construct		-
-p5-Palm			-
+perlmenu		-
 
 # Not in CPAN
 mecab-perl		-
 
 # Old, should be removed
-Audio-Tools		-
-FileHandle-Deluxe	-
-FileHandle-Rollback	-
 Gtk2-PodViewer		-
