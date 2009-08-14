@@ -264,30 +264,30 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}}) {
 		
 		if (defined $pmask{'package'}{$cat_pkg}{'operator'}) {
 			# - package is masked >
-			if ($pmask{'package'}{$tmp}{'operator'} eq "*") {
+			if ($pmask{'package'}{$cat_pkg}{'operator'} eq "*") {
 				# - all versions of this package have been masked - skip >
 				if ($DEBUG) { print "All versions of this package have been masked - skip\n"; }
 				next;
 			}
-			elsif ($pmask{'package'}{$tmp}{'operator'} eq ">=") {
+			elsif ($pmask{'package'}{$cat_pkg}{'operator'} eq ">=") {
 				# - all versions greater/equal than {'version'} have been masked >
-				if ($modules{'cpan_lc'}{$p_modulename} >= $pmask{'package'}{$tmp}{'version'}) {
+				if ($modules{'cpan_lc'}{$p_modulename} >= $pmask{'package'}{$cat_pkg}{'version'}) {
 					# - cpan version has been masked - skip >
 					if ($DEBUG) { print "cpan version has been masked - skip\n"; }
 					next;
 				}
 			}
-			elsif ($pmask{'package'}{$tmp}{'operator'} eq ">") {
+			elsif ($pmask{'package'}{$cat_pkg}{'operator'} eq ">") {
 				# - all versions greater than {'version'} have been masked >
-				if ($modules{'cpan_lc'}{$p_modulename} > $pmask{'package'}{$tmp}{'version'}) {
+				if ($modules{'cpan_lc'}{$p_modulename} > $pmask{'package'}{$cat_pkg}{'version'}) {
 					# - cpan version has been masked - skip >
 					if ($DEBUG) { print "cpan version has been masked - skip\n"; }
 					next;
 				}
 			}
-			elsif ($pmask{'package'}{$tmp}{'operator'} eq "=") {
+			elsif ($pmask{'package'}{$cat_pkg}{'operator'} eq "=") {
 				# - this version has been masked >
-				if ($modules{'cpan_lc'}{$p_modulename} == $pmask{'package'}{$tmp}{'version'}) {
+				if ($modules{'cpan_lc'}{$p_modulename} == $pmask{'package'}{$cat_pkg}{'version'}) {
 					# - cpan version has been masked - skip >
 					if ($DEBUG) { print "cpan version has been masked - skip\n"; }
 					next;
