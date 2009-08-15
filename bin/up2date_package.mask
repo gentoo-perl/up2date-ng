@@ -25,5 +25,3 @@
 =dev-perl/URI-1.40
 
 # Broken distribution
-
-=dev-perl/Gtk2-WebKit-0.06
