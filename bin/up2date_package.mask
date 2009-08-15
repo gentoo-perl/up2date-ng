@@ -22,7 +22,8 @@
 
 # No need to update
 =dev-perl/Email-Valid-0.182
-=dev-perl/URI-1.39
+=dev-perl/URI-1.40
 
 # Broken distribution
 
+=dev-perl/Gtk2-WebKit-0.06
