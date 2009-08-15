@@ -130,21 +130,21 @@ if (-f $package_mask_file) {
 			if (substr($line,0,2) eq '>=') {
 				# - block package versions greater/equal then given version (e.g. >=dev-perl/Video-Info-0.999) >
 				$tmp=substr($line,2,length($line)-2);
-				$tmp=~s/([a-zA-Z\-]+)\/([a-zA-Z\-]+)-([0-9a-zA-Z\._\-]+)/$1\/$2/;
+				$tmp=~s|([a-zA-Z+_.-]+)/([a-zA-Z0-9+_-]+)-([0-9]+(\.[0-9]+)*[a-z]?[0-9a-zA-Z_-]*)|$1/$2|;
 				$pmask{'package'}{$tmp}{'version'}=$3;
 				$pmask{'package'}{$tmp}{'operator'}='>=';
 			}
 			elsif (substr($line,0,1) eq '>') {
 				# - block package versions greater then given version (e.g. >dev-perl/Video-Info-0.993) >
 				$tmp=substr($line,1,length($line)-1);
-				$tmp=~s/([a-zA-Z\-]+)\/([a-zA-Z\-]+)-([0-9a-zA-Z\._\-]+)/$1\/$2/;
+				$tmp=~s|([a-zA-Z+_.-]+)/([a-zA-Z0-9+_-]+)-([0-9]+(\.[0-9]+)*[a-z]?[0-9a-zA-Z_-]*)|$1/$2|;
 				$pmask{'package'}{$tmp}{'version'}=$3;
 				$pmask{'package'}{$tmp}{'operator'}='>';
 			}
 			elsif (substr($line,0,1) eq '=') {
 				# - block one package version (e.g. =dev-perl/Video-Info-0.999) >
 				$tmp=substr($line,1,length($line)-1);
-				$tmp=~s/([a-zA-Z\-]+)\/([a-zA-Z\-]+)-([0-9a-zA-Z\._\-]+)/$1\/$2/;
+				$tmp=~s|([a-zA-Z+_.-]+)/([a-zA-Z0-9+_-]+)-([0-9]+(\.[0-9]+)*[a-z]?[0-9a-zA-Z_-]*)|$1/$2|;
 				$pmask{'package'}{$tmp}{'version'}=$3;
 				$pmask{'package'}{$tmp}{'operator'}='=';
 			}
@@ -194,7 +194,7 @@ else {
 	$pxs->print_info("No up2date_package.altname file available - Skipping\n");
 }
 
-# - Get categorys to check >
+# - Get categories to check >
 @scan_portage_categories=$pxs->getPortageXScategorylist('perl');
 
 # - get package/version info from portage and cpan >
@@ -491,18 +491,8 @@ sub getPerlPackages {
 				if ($#tmp_availableVersions>-1) {
 					$modules{'portage_lc_realversion'}{lc($tp)}=(sort(@tmp_availableVersions))[$#tmp_availableVersions];
 					$modules{'portage_lc'}{lc($tp)}=$modules{'portage_lc_realversion'}{lc($tp)};
-					
-					# - get rid of -rX >
-					$modules{'portage_lc'}{lc($tp)}=~s/([a-zA-Z0-9\-_\/]+)-r[0-9+]/$1/;
-					$modules{'portage_lc'}{lc($tp)}=~s/([a-zA-Z0-9\-_\/]+)-rc[0-9+]/$1/;
-					$modules{'portage_lc'}{lc($tp)}=~s/([a-zA-Z0-9\-_\/]+)_p[0-9+]/$1/;
-					$modules{'portage_lc'}{lc($tp)}=~s/([a-zA-Z0-9\-_\/]+)_pre[0-9+]/$1/;
-					
-					# - get rid of other stuff we don't want >
-					$modules{'portage_lc'}{lc($tp)}=~s/([a-zA-Z0-9\-_\/]+)_alpha[0-9+]?/$1/;
-					$modules{'portage_lc'}{lc($tp)}=~s/([a-zA-Z0-9\-_\/]+)_beta[0-9+]?/$1/;
-					$modules{'portage_lc'}{lc($tp)}=~s/[a-zA-Z]+$//;
 
+					$modules{'portage_lc'}{lc($tp)}=~s|^([0-9]+(\.[0-9]+)*).*|$1|;
 					$modules{'portage'}{lc($tp)}{'name'}=$tp;
 					$modules{'portage'}{lc($tp)}{'category'}=$tc;
 				}
@@ -554,7 +544,7 @@ sub getCPANPackages {
 					
 					# - Remove any leading/trailing stuff (like "v" in "v5.2.0") we don't want >
 					$cpan_version=~s/^[a-zA-Z]+//;
-					$cpan_version=~s/[a-zA-Z]+$//;
+					$cpan_version=~s/[a-zA-Z.]+$//;
 					
 					# - Convert CPAN version >
 					@tmp_v=split(/\./,$cpan_version);
