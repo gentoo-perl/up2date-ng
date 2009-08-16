@@ -256,6 +256,9 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}}) {
 		for (1..$#tmp_v) { $modules{'portage_lc'}{$p_original_modulename}.= $tmp_v[$_]; }
 		if ($DEBUG) { print " -> ".$modules{'portage_lc'}{$p_original_modulename}."\n"; }
 	}
+
+	# Some CPAN packages have a leading 'v', like Class-DBI-v3.017, trim it for comparision
+	$modules{'cpan_lc'}{$p_modulename} =~ s/^v//g;
 	
 	# - Portage package matches CPAN package >
 	if ($modules{'cpan_lc'}{$p_modulename} > $modules{'portage_lc'}{$p_original_modulename}) {
