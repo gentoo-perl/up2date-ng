@@ -25,3 +25,4 @@
 =dev-perl/URI-1.40
 
 # Broken distribution
+=dev-perl/Net-IRC-0.76
