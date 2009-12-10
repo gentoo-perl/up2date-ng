@@ -22,7 +22,8 @@
 
 # No need to update
 =dev-perl/Email-Valid-0.182
-=dev-perl/URI-1.40
+=dev-perl/SVN-Simple-0.28
+=dev-perl/B-Utils-0.09
 
 # Broken distribution
 =dev-perl/Net-IRC-0.76
