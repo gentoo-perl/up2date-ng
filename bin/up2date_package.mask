@@ -19,11 +19,9 @@
 
 # CPAN version madness
 =dev-perl/Class-DBI-3.06
-=dev-perl/p5-Palm-1.3.0
+=dev-perl/p5-Palm-1.30
 
 # No need to update
-=dev-perl/B-Utils-0.09
-=dev-perl/Email-Sender-0.093380
 =dev-perl/Email-Valid-0.182
 =dev-perl/SVN-Simple-0.28
 
