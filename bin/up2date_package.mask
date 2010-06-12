@@ -22,8 +22,10 @@
 =dev-perl/p5-Palm-1.30
 
 # No need to update
-=dev-perl/Email-Valid-0.182
 =dev-perl/SVN-Simple-0.28
+=dev-perl/File-chdir-0.1004
 
-# Broken distribution
-=dev-perl/Net-IRC-0.76
+# Only test changes, which we don't run
+=dev-perl/Bio-Das-1.15
+=dev-perl/IO-Socket-INET6-2.64
+=dev-perl/IO-Socket-INET6-2.65
