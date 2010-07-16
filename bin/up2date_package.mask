@@ -19,13 +19,12 @@
 
 # CPAN version madness
 =dev-perl/Class-DBI-3.06
-=dev-perl/p5-Palm-1.30
 
 # No need to update
 =dev-perl/SVN-Simple-0.28
 =dev-perl/File-chdir-0.1004
+=dev-perl/Mail-ListDetector-1.03
 
 # Only test changes, which we don't run
-=dev-perl/Bio-Das-1.15
 =dev-perl/IO-Socket-INET6-2.64
 =dev-perl/IO-Socket-INET6-2.65
