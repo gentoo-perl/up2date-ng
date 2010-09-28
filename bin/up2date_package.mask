@@ -21,11 +21,20 @@
 =dev-perl/Class-DBI-3.06
 
 # No need to update
-=dev-perl/SVN-Simple-0.28
 =dev-perl/File-chdir-0.1004
-=dev-perl/Mail-ListDetector-1.03
-=dev-perl/Class-Accessor-Grouped-0.09005
 =dev-perl/HTML-Parser-3.68
+=dev-perl/Mail-ListDetector-1.03
+=dev-perl/SVN-Simple-0.28
+
+# 0.10 == 0.06 - changes were reverted
+=dev-perl/MooseX-Types-DateTimeX-0.07
+=dev-perl/MooseX-Types-DateTimeX-0.10
+
+# "support Perl 5.6.0" - gentoo is a modern distribution!
+=dev-perl/Test-Requires-0.06
+
+# we don't use the bundled bzip sources
+=perl-core/Compress-Raw-Bzip2-2.031
 
 # Only test changes, which we don't run
 =dev-perl/IO-Socket-INET6-2.64
