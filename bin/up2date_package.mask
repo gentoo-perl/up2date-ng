@@ -39,3 +39,7 @@
 # Only test changes, which we don't run
 =dev-perl/IO-Socket-INET6-2.64
 =dev-perl/IO-Socket-INET6-2.65
+=dev-perl/URI-1.56
+
+# Supports JSON 1 now too but we already have JSON 2
+=dev-perl/JSON-Any-1.24
