@@ -43,3 +43,9 @@
 
 # Supports JSON 1 now too but we already have JSON 2
 =dev-perl/JSON-Any-1.24
+
+# Fixed the number of skipped tests for Windows
+=dev-perl/Log-Log4perl-1.31
+
+# "requires" DBD::SQLite
+=dev-perl/DBIx-Migration-0.07
