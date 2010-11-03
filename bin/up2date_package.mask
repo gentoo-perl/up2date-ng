@@ -40,6 +40,7 @@
 =dev-perl/IO-Socket-INET6-2.64
 =dev-perl/IO-Socket-INET6-2.65
 =dev-perl/URI-1.56
+=dev-perl/Net-Twitter-3.14002
 
 # Supports JSON 1 now too but we already have JSON 2
 =dev-perl/JSON-Any-1.24
