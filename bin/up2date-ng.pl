@@ -28,49 +28,48 @@
 # - modules >
 use warnings;
 use strict;
+use version 0.77;
 use DirHandle;
 use CPAN;
 use Term::ANSIColor;
 use Getopt::Long;
-use PortageXS;
+use PortageXS v0.2.11;
+use CPAN::DistnameInfo;
+
+#use Data::Dumper;
+
 Getopt::Long::Configure("bundling");
 
 # - init vars & contants >
-my $VERSION			= '0.24';
-my $pxs				= PortageXS->new();
-my $portdir			= $pxs->getPortdir();
-my @scan_portage_categories	= ();
-my $up2date_config_dir		= './';
-my $category_list_file		= $up2date_config_dir.'up2date_category.list';
-my $package_mask_file		= $up2date_config_dir.'up2date_package.mask';
-my $package_altname_file	= $up2date_config_dir.'up2date_package.altname';
-my @timeData			= localtime(time);
-my %modules			= ();
-my @tmp_availableVersions	= ();
-my @packages2update		= ();
-my @tmp_v			= ();
-my %pmask			= ();
-my %paltname			= ();
-my @need_packagealtname		= ();
-my $cat_pkg			= '';
-my $cpan_searchstring		= '';
-my $html_packagelist_table	= '';
-my $mail_packagelist_table	= '';
-my $p_modulename		= '';
-my $xml_packagelist_table	= '';
-my $bumplist_packagelist	= '';
-my $DEBUG			= 0;
-my $generate_all		= 0;
-my $generate_bumplist		= 0;
-my $generate_html		= 0;
-my $generate_mail		= 0;
-my $generate_packagelist	= 0;
-my $generate_xml		= 0;
-my $force_cpan_reload		= 0;
-my $hasVirtual			= 0;
-my $numberPackagesTotal		= 0;
-my $tmp;
-my $mod;
+my $VERSION                 = '0.24';
+my $pxs                     = PortageXS->new();
+my $portdir                 = $pxs->getPortdir();
+my $reponame                = '';
+my @scan_portage_categories = ();
+my $up2date_config_dir      = './';
+my $category_list_file      = $up2date_config_dir . 'up2date_category.list';
+my $package_mask_file       = $up2date_config_dir . 'up2date_package.mask';
+my $package_altname_file    = $up2date_config_dir . 'up2date_package.altname';
+my @timeData                = localtime(time);
+my %modules                 = ();
+my @packages2update         = ();
+my %pmask                   = ();
+my %paltname                = ();
+my @need_packagealtname     = ();
+my $html_packagelist_table  = '';
+my $mail_packagelist_table  = '';
+my $xml_packagelist_table   = '';
+my $bumplist_packagelist    = '';
+my $DEBUG                   = 0;
+my $generate_all            = 0;
+my $generate_bumplist       = 0;
+my $generate_html           = 0;
+my $generate_mail           = 0;
+my $generate_packagelist    = 0;
+my $generate_xml            = 0;
+my $force_cpan_reload       = 0;
+my $hasVirtual              = 0;
+my $numberPackagesTotal     = 0;
 
 # - get options >
 printHeader();
@@ -98,6 +97,7 @@ if ($generate_all) {
 # - Print settings and do some basic checks >
 if (-d $portdir) {
 	$pxs->print_ok("PORTDIR: ".$portdir."\n");
+	$reponame = $pxs->getReponame($portdir) || "no-reponame" ;
 }
 else {
 	$pxs->print_err("PORTDIR not set or incorrect!\n\n");
@@ -122,28 +122,28 @@ if (-f $package_mask_file) {
 	$pmask{'all'} = $pxs->getFileContents($package_mask_file);
 	
 	foreach my $line (split(/\n/,$pmask{'all'})) {
-		$line=~s/^[ |\t]+//;	# leading whitespaces and tabs
-		$line=~s/[ |\t]+$//;	# trailing whitespaces and tabs
-		$line=~s/#(.*)//g;	# remove comments
-		
+		$line=~s/^[ \t]+//;	# leading whitespaces and tabs
+		$line=~s/[ \t]+$//;	# trailing whitespaces and tabs
+		$line=~s/#.*//;	# remove comments
+		my $tmp;
 		if ($line ne '') {
 			if (substr($line,0,2) eq '>=') {
 				# - block package versions greater/equal then given version (e.g. >=dev-perl/Video-Info-0.999) >
-				$tmp=substr($line,2,length($line)-2);
+				$tmp=substr($line,2);
 				$tmp=~s|([a-zA-Z+_.-]+)/([a-zA-Z0-9+_-]+)-([0-9]+(\.[0-9]+)*[a-z]?[0-9a-zA-Z_-]*)|$1/$2|;
 				$pmask{'package'}{$tmp}{'version'}=$3;
 				$pmask{'package'}{$tmp}{'operator'}='>=';
 			}
 			elsif (substr($line,0,1) eq '>') {
 				# - block package versions greater then given version (e.g. >dev-perl/Video-Info-0.993) >
-				$tmp=substr($line,1,length($line)-1);
+				$tmp=substr($line,1);
 				$tmp=~s|([a-zA-Z+_.-]+)/([a-zA-Z0-9+_-]+)-([0-9]+(\.[0-9]+)*[a-z]?[0-9a-zA-Z_-]*)|$1/$2|;
 				$pmask{'package'}{$tmp}{'version'}=$3;
 				$pmask{'package'}{$tmp}{'operator'}='>';
 			}
 			elsif (substr($line,0,1) eq '=') {
 				# - block one package version (e.g. =dev-perl/Video-Info-0.999) >
-				$tmp=substr($line,1,length($line)-1);
+				$tmp=substr($line,1);
 				$tmp=~s|([a-zA-Z+_.-]+)/([a-zA-Z0-9+_-]+)-([0-9]+(\.[0-9]+)*[a-z]?[0-9a-zA-Z_-]*)|$1/$2|;
 				$pmask{'package'}{$tmp}{'version'}=$3;
 				$pmask{'package'}{$tmp}{'operator'}='=';
@@ -168,25 +168,23 @@ else {
 	$pxs->print_info("No package.mask file available - Skipping\n");
 }
 
-# - Parse up2date_package.mask >
+# - Parse up2date_package.altname >
 if (-f $package_altname_file) {
 	$pxs->print_ok('parsing '.$package_altname_file."\n");
-	
-	$paltname{'all'} = $pxs->getFileContents($package_altname_file);
-	
-	foreach my $line (split(/\n/,$paltname{'all'})) {
-		$line=~s/^[ |\t]+//;	# leading whitespaces and tabs
-		$line=~s/[ |\t]+$//;	# trailing whitespaces and tabs
-		$line=~s/#(.*)//g;	# remove comments
+
+	foreach my $line (split(/\n/,$pxs->getFileContents($package_altname_file))) {
+		$line=~s/^[ \t]+//;	# leading whitespaces and tabs
+		$line=~s/[ \t]+$//;	# trailing whitespaces and tabs
+		$line=~s/#.*//;	# remove comments
 		
 		if ($line ne '' && $line ne ' ') {
-			$line=~s/[ |\t]+/ /; # remove multiple whitespaces and tabs
+			$line=~s/[ \t]+/ /; # remove multiple whitespaces and tabs
 			my @tmp=split(/ /,$line);
 			
 			# - set $paltname{'portage'}{<portage-packagename>} = <cpan-packagename> (in lowercase) >
-			$paltname{'portage'}{lc($tmp[0])}=lc($tmp[1]);
+			$paltname{$tmp[0]}=$tmp[1];
 
-			if ($DEBUG) { print $tmp[0]." ".$paltname{'portage'}{lc($tmp[0])}."\n"; }
+			if ($DEBUG) { print "'$tmp[0]' => '$paltname{$tmp[0]}'\n"; }
 		}
 	}
 }
@@ -199,71 +197,27 @@ else {
 
 # - get package/version info from portage and cpan >
 print "\n";
-$pxs->print_ok("getting infos from CPAN\n");
-getCPANPackages($force_cpan_reload);
-print "\n";
 $pxs->print_ok("getting package information from portage-tree\n");
 print "\n";
 getPerlPackages();
+$pxs->print_ok("getting infos from CPAN\n");
+getCPANPackages($force_cpan_reload);
+print "\n";
 
 # - get some work done >
 $pxs->print_ok("Available updates:\n");
-foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}}) {
-	if ($DEBUG) { print $p_original_modulename."\n"; }
-	$p_modulename=$p_original_modulename;
+foreach my $distname (sort keys %modules) {
+	if ($DEBUG) { print $distname."\n"; }
 	
-	if (! $modules{'cpan_lc'}{$p_modulename}) {
+	if (! $modules{$distname}{'CPAN_V'}) {
 		# - Could not find a matching package name - probably not a CPAN-module >
-		if ($DEBUG) { print "- Could not find CPAN-Module ('".$p_modulename."') for package '".$p_original_modulename."'!\n"; }
-		
-		# - Look for an entry in up2date_package.altname for this package >
-		if ($paltname{'portage'}{$p_original_modulename}) {
-			# - found entry in up2date_package.altname >
-			if ($paltname{'portage'}{$p_original_modulename} ne "-") {
-				if ($DEBUG) { print "- Found entry for this package. Using '".$paltname{'portage'}{$p_original_modulename}."' now.\n"; }
-				
-				$p_modulename=$paltname{'portage'}{$p_original_modulename};
-				
-				if (! defined $modules{'cpan_lc'}{$p_modulename}) {
-					# - entry in up2date_package.altname does not match >
-					if ($DEBUG) { print "- Could not find CPAN-Module for given entry ('".$paltname{'portage'}{$p_original_modulename}."')! Please correct! Skipping..\n"; }
-					push(@need_packagealtname,$modules{'portage'}{$p_original_modulename}{'name'});
-					next;
-				}
-			}
-			else {
-				# - Package has been marked as "non-CPAN-module" >
-				if ($DEBUG) { print "- Package '".$p_modulename."' has been marked as non-CPAN-module. Skipping.\n"; }
-				next;
-			}
-		}
-		else {
-			# - no entry in up2date_package.altname found for $p_modulename >
-			if ($DEBUG) { print "- No entry in up2date_package.altname found for package '".$p_modulename."'!\n"; }
-			push(@need_packagealtname,$modules{'portage'}{$p_original_modulename}{'name'});
-			next;
-		}
+		if ($DEBUG) { print "- Could not find CPAN-Module ('".$distname."') for package '".$modules{$distname}{'PN'}."'!\n"; }
+		push(@need_packagealtname,$distname) unless $paltname{$distname} eq '-';
+		next;
 	}
-	
-	# - Package found >
-	
-	# - Convert portage version >
-	@tmp_v=split(/\./,$modules{'portage_lc'}{$p_original_modulename});
-	$modules{'portage_lc_original-portage-version'}{$p_original_modulename}=$modules{'portage_lc'}{$p_original_modulename};
-	if ($#tmp_v > 1) {
-		if ($DEBUG) { print " converting version -> ".$modules{'portage_lc'}{$p_original_modulename}; }
-		$modules{'portage_lc'}{$p_original_modulename}=$tmp_v[0].".";
-		for (1..$#tmp_v) { $modules{'portage_lc'}{$p_original_modulename}.= $tmp_v[$_]; }
-		if ($DEBUG) { print " -> ".$modules{'portage_lc'}{$p_original_modulename}."\n"; }
-	}
-
-	# Some CPAN packages have a leading 'v', like Class-DBI-v3.017, trim it for comparision
-	$modules{'cpan_lc'}{$p_modulename} =~ s/^v//g;
-	
-	# - Portage package matches CPAN package >
-	if ($modules{'cpan_lc'}{$p_modulename} > $modules{'portage_lc'}{$p_original_modulename}) {
+	if ($modules{$distname}{'CPAN_V'} > $modules{$distname}{'EBUILD_V'} ) {
 		# - package needs some lovin - check if package/version has been masked >
-		$cat_pkg = $modules{'portage'}{$p_original_modulename}{'category'}."/".$modules{'portage'}{$p_original_modulename}{'name'};
+		my $cat_pkg = $modules{$distname}{'CATEGORY'}."/".$modules{$distname}{'PN'};
 		
 		if (defined $pmask{'package'}{$cat_pkg}{'operator'}) {
 			# - package is masked >
@@ -274,7 +228,7 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}}) {
 			}
 			elsif ($pmask{'package'}{$cat_pkg}{'operator'} eq ">=") {
 				# - all versions greater/equal than {'version'} have been masked >
-				if ($modules{'cpan_lc'}{$p_modulename} >= $pmask{'package'}{$cat_pkg}{'version'}) {
+				if ($modules{$distname}{'CPAN_V'} >= version->parse($pmask{'package'}{$cat_pkg}{'version'}) ) {
 					# - cpan version has been masked - skip >
 					if ($DEBUG) { print "cpan version has been masked - skip\n"; }
 					next;
@@ -282,7 +236,7 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}}) {
 			}
 			elsif ($pmask{'package'}{$cat_pkg}{'operator'} eq ">") {
 				# - all versions greater than {'version'} have been masked >
-				if ($modules{'cpan_lc'}{$p_modulename} > $pmask{'package'}{$cat_pkg}{'version'}) {
+				if ($modules{$distname}{'CPAN_V'} > version->parse($pmask{'package'}{$cat_pkg}{'version'}) ) {
 					# - cpan version has been masked - skip >
 					if ($DEBUG) { print "cpan version has been masked - skip\n"; }
 					next;
@@ -290,90 +244,85 @@ foreach my $p_original_modulename (sort keys %{$modules{'portage_lc'}}) {
 			}
 			elsif ($pmask{'package'}{$cat_pkg}{'operator'} eq "=") {
 				# - this version has been masked >
-				if ($modules{'cpan_lc'}{$p_modulename} == $pmask{'package'}{$cat_pkg}{'version'}) {
+				if ($modules{$distname}{'CPAN_V'} == version->parse($pmask{'package'}{$cat_pkg}{'version'}) ) {
 					# - cpan version has been masked - skip >
 					if ($DEBUG) { print "cpan version has been masked - skip\n"; }
 					next;
 				}
 			}
 		}
-		
-		# - print update msg >
-		print '   '.$modules{'portage'}{$p_original_modulename}{'category'}."/".$modules{'portage'}{$p_original_modulename}{'name'}." needs updating. Ebuild: ".$modules{'portage_lc'}{$p_original_modulename}."; CPAN: ".$modules{'cpan_lc'}{$p_modulename}."\n";
+		print '   '.$cat_pkg." needs updating. Ebuild: ".$modules{$distname}{'PV'}."; CPAN: ".$modules{$distname}{'CPAN_V'}."\n";
 		
 		# - store packagename - it needs to be updated >
-		push(@packages2update,$modules{'portage'}{$p_original_modulename}{'category'}."/".$modules{'portage'}{$p_original_modulename}{'name'});
+		push(@packages2update,$cat_pkg);
 		
 		# - check for virtuals >
-		if (-d $portdir.'/virtual/perl-'.$modules{'portage'}{$p_original_modulename}{'name'}) {
+		if (-d $portdir.'/virtual/perl-'.$modules{$distname}{'PN'}) {
 			$hasVirtual=1;
 		}
 		else {
 			$hasVirtual=0;
 		}
 		
-		# - generate searchstring for search.cpan.org >
-		$cpan_searchstring=$p_original_modulename;
-		$cpan_searchstring=~s/-/::/g;
-		
 		if ($generate_xml) {
 			$xml_packagelist_table .= "  <tr>\n";
 			if ($hasVirtual) {
-				$xml_packagelist_table .= "    <ti><uri link=\"http://search.cpan.org/search?query=".$cpan_searchstring."&amp;mode=all\">".$modules{'portage'}{$p_original_modulename}{'name'}."</uri> (virtual/perl-".$modules{'portage'}{$p_original_modulename}{'name'}.")</ti>\n";
+				$xml_packagelist_table .= "    <ti><uri link=\"http://search.cpan.org/dist/".$distname."\">".$modules{$distname}{'PN'}."</uri> (virtual/perl-".$modules{$distname}{'PN'}.")</ti>\n";
 			}
 			else {
-				$xml_packagelist_table .= "    <ti><uri link=\"http://search.cpan.org/search?query=".$cpan_searchstring."&amp;mode=all\">".$modules{'portage'}{$p_original_modulename}{'name'}."</uri></ti>\n";
+				$xml_packagelist_table .= "    <ti><uri link=\"http://search.cpan.org/dist/".$distname."\">".$modules{$distname}{'PN'}."</uri></ti>\n";
 			}
-			$xml_packagelist_table .= "    <ti align=\"right\">".$modules{'portage_lc'}{$p_original_modulename}."</ti>\n";
-			$xml_packagelist_table .= "    <ti align=\"right\">".$modules{'cpan_lc'}{$p_modulename}."</ti>\n";
+			$xml_packagelist_table .= "    <ti align=\"right\">".$modules{$distname}{'PV'}."</ti>\n";
+			$xml_packagelist_table .= "    <ti align=\"right\"><uri link=\"http://search.cpan.org/dist/".$distname."-".$modules{$distname}{'CPAN_V'}."/\">".$modules{$distname}{'CPAN_V'}."</uri></ti>\n";
+			$xml_packagelist_table .= "    <ti><uri link=\"http://search.cpan.org/diff?from=".$distname."-".$modules{$distname}{'EBUILD_V'}."&amp;to=".$distname."-".$modules{$distname}{'CPAN_V'}."&amp;w=1\">Diff</uri></ti>\n";
 			$xml_packagelist_table .= "  </tr>\n";
 		}
 		
 		if ($generate_mail) {
-			$mail_packagelist_table .= "  ".$modules{'portage'}{$p_original_modulename}{'name'};
+			$mail_packagelist_table .= "  ".$distname;
 			if ($hasVirtual) { $mail_packagelist_table.=" *"; }
-			for(0..(35-($hasVirtual*2)-length($modules{'portage_lc'}{$p_original_modulename})-length($p_original_modulename))) {
+			for(0..(35-($hasVirtual*2)-length($distname)-length($modules{$distname}{'EBUILD_V'}))) {
 				$mail_packagelist_table .= " ";
 			}
-			$mail_packagelist_table .= " ".$modules{'portage_lc'}{$p_original_modulename};
-			for(0..(20-length($modules{'cpan_lc'}{$p_modulename}))) {
+			$mail_packagelist_table .= " ".$modules{$distname}{'EBUILD_V'};
+			for(0..(20-length($modules{$distname}{'CPAN_V'}))) {
 				$mail_packagelist_table .= " ";
 			}
-			$mail_packagelist_table .= " ".$modules{'cpan_lc'}{$p_modulename};
+			$mail_packagelist_table .= " ".$modules{$distname}{'CPAN_V'};
 			$mail_packagelist_table .= "\n";
 		}
-
+		
 		if ($generate_html) {
 			$html_packagelist_table .= "\t\t\t<tr>\n";
 			if ($hasVirtual) {
-				$html_packagelist_table .= "\t\t\t\t<td><a href=\"http://search.cpan.org/search?query=".$cpan_searchstring."&amp;mode=all\">".$modules{'portage'}{$p_original_modulename}{'name'}."</a> (virtual/perl-".$modules{'portage'}{$p_original_modulename}{'name'}.")</td>\n";
+				$html_packagelist_table .= "\t\t\t\t<td><a href=\"http://search.cpan.org/dist/".$distname."\">".$distname."</a> (virtual/perl-".$distname.")</td>\n";
 			}
 			else {
-				$html_packagelist_table .= "\t\t\t\t<td><a href=\"http://search.cpan.org/search?query=".$cpan_searchstring."&amp;mode=all\">".$modules{'portage'}{$p_original_modulename}{'name'}."</a></td>\n";
+				$html_packagelist_table .= "\t\t\t\t<td><a href=\"http://search.cpan.org/dist/".$distname."\">".$distname."</a></td>\n";
 			}
-			$html_packagelist_table .= "\t\t\t\t<td align=\"right\">".$modules{'portage_lc'}{$p_original_modulename}."</td>\n";
-			$html_packagelist_table .= "\t\t\t\t<td align=\"right\">".$modules{'cpan_lc'}{$p_modulename}."</td>\n";
+			$html_packagelist_table .= "\t\t\t\t<td align=\"right\">".$modules{$distname}{'EBUILD_V'}."</td>\n";
+			$html_packagelist_table .= "\t\t\t\t<td align=\"right\">".$modules{$distname}{'CPAN_V'}."</td>\n";
 			$html_packagelist_table .= "\t\t\t</tr>\n";
 		}
 		
 		if ($generate_bumplist) {
-			$bumplist_packagelist .= $modules{'portage'}{$p_original_modulename}{'category'}.'/'.$modules{'portage'}{$p_original_modulename}{'name'}.' ';
+			$bumplist_packagelist .= $cat_pkg .' ';
 			if ($hasVirtual) {
 				$bumplist_packagelist .= '1 ';
 			}
 			else {
 				$bumplist_packagelist .= '0 ';
 			}
-			$bumplist_packagelist .= $modules{'portage_lc_original-portage-version'}{$p_original_modulename}.' ';
-			$bumplist_packagelist .= $modules{'cpan_lc'}{$p_modulename}."\n";
+			$bumplist_packagelist .= $modules{$distname}{'PV'}.' ';
+			$bumplist_packagelist .= $modules{$distname}{'CPAN_V'}."\n";
 		}
 	}
 	else {
-		if ($DEBUG) { print $p_original_modulename." is uptodate\n"; }
+		if ($DEBUG) { print $distname." is uptodate\n"; }
 	}
 }
 
-$numberPackagesTotal=(keys %{$modules{'portage_lc'}});
+$numberPackagesTotal=(keys %modules);
 print "\n";
 $pxs->print_ok("total packages suspected as outdated: ".($#packages2update+1)." of ".$numberPackagesTotal."\n");
 print "\n";
@@ -384,17 +333,27 @@ if ($generate_xml) {
 	my $xml = $pxs->getFileContents("template_outdated-cpan-packages.xml");
 	my $dateXML = sprintf("%u-%02u-%02u",int($timeData[5]+1900),($timeData[4]+1),$timeData[3]);
 	my $numberOutdated = ($#packages2update+1);
+	my $guide_link = "/proj/en/perl/outdated-cpan-packages.xml";
+	my $file_name = "outdated-cpan-packages.xml";
+	if ($reponame eq 'gentoo') {
+		$reponame = "portage";
+	} else {
+		$file_name  = "outdated-cpan-packages-$reponame.xml";
+		$guide_link = "/proj/en/perl/outdated-cpan-packages-$reponame.xml";
+	}
 	chomp($xml_packagelist_table);
 	$xml =~ s/<TMPL_PACKAGELIST_TABLE>/$xml_packagelist_table/;
 	$xml =~ s/<TMPL_VAR_DATE>/$dateXML/g;
 	$xml =~ s/<TMPL_NUMBER_OUTDATED>/$numberOutdated/;
 	$xml =~ s/<TMPL_VAR_UP2DATE-NG-VERSION>/$VERSION/;
 	$xml =~ s/<TMPL_NUMBER_PACKAGES_TOTAL>/$numberPackagesTotal/;
+	$xml =~ s/<TMPL_REPO_NAME>/$reponame/g;
+	$xml =~ s/<TMPL_GUIDE_LINK>/$guide_link/;
 	
-	$pxs->print_ok("creating outdated-cpan-packages.xml\n");
-	open(FH,">outdated-cpan-packages.xml") || die ("Cannot open/write to file outdated-cpan-packages.xml");
-	print FH $xml;
-	close(FH);
+	$pxs->print_ok("creating $file_name\n");
+	open my $fh,'>',"$file_name" or die ("Cannot open/write to file $file_name");
+	print $fh $xml;
+	close $fh;
 	$pxs->print_ok("done!\n\n");
 }
 
@@ -402,14 +361,16 @@ if ($generate_xml) {
 if ($generate_mail) {
 	$pxs->print_ok("called with --generate-mail\n");
 	my $mail = $pxs->getFileContents("template_outdated-cpan-packages.mail");
-	$mail_packagelist_table .= "\nTotal packages suspected as outdated: ".($#packages2update+1)." of ".$numberPackagesTotal."\n";
+	my $numberOutdated = ($#packages2update+1);
 	$mail =~ s/<TMPL_PACKAGELIST_TABLE>/$mail_packagelist_table/;
+	$mail =~ s/<TMPL_NUMBER_OUTDATED>/$numberOutdated/;
+	$mail =~ s/<TMPL_NUMBER_PACKAGES_TOTAL>/$numberPackagesTotal/;
 	$mail =~ s/<TMPL_VAR_UP2DATE-NG-VERSION>/$VERSION/;
 	
 	$pxs->print_ok("creating outdated-cpan-packages.mail\n");
-	open(FH,">outdated-cpan-packages.mail") || die ("Cannot open/write to file outdated-cpan-packages.mail");
-	print FH $mail;
-	close(FH);
+	open my $fh, '>','outdated-cpan-packages.mail' or die ("Cannot open/write to file outdated-cpan-packages.mail");
+	print $fh $mail;
+	close $fh;
 	$pxs->print_ok("done!\n\n");
 }
 
@@ -427,9 +388,9 @@ if ($generate_html) {
 	$html =~ s/<TMPL_NUMBER_PACKAGES_TOTAL>/$numberPackagesTotal/;
 
 	$pxs->print_ok("creating outdated-cpan-packages.html\n");
-	open(FH,">outdated-cpan-packages.html") || die ("Cannot open/write to file outdated-cpan-packages.html");
-	print FH $html;
-	close(FH);
+	open my $fh, '>', 'outdated-cpan-packages.html' or die ("Cannot open/write to file outdated-cpan-packages.html");
+	print $fh $html;
+	close $fh;
 	$pxs->print_ok("done!\n\n");
 }
 
@@ -437,9 +398,9 @@ if ($generate_html) {
 if ($generate_bumplist) {
 	$pxs->print_ok("called with --generate-bumplist\n");
 	$pxs->print_ok("creating outdated-cpan-packages.bumplist\n");
-	open(FH,">outdated-cpan-packages.bumplist") || die ("Cannot open/write to file outdated-cpan-packages.bumplist");
-	print FH $bumplist_packagelist;
-	close(FH);
+	open my $fh, '>', 'outdated-cpan-packages.bumplist' or die ("Cannot open/write to file outdated-cpan-packages.bumplist");
+	print $fh $bumplist_packagelist;
+	close $fh;
 	$pxs->print_ok("done!\n\n");
 }
 
@@ -447,11 +408,11 @@ if ($generate_bumplist) {
 if ($generate_packagelist) {
 	$pxs->print_ok("called with --generate-packagelist\n");
 	$pxs->print_ok("creating outdated-cpan-packages.packagelist\n");
-	open(FH,">outdated-cpan-packages.packagelist") || die ("Cannot open/write to file outdated-cpan-packages.packagelist");
+	open my $fh,'>','outdated-cpan-packages.packagelist' or die ("Cannot open/write to file outdated-cpan-packages.packagelist");
 	foreach (@packages2update) {
-		print FH $_."\n";
+		print $fh $_."\n";
 	}
-	close(FH);
+	close $fh;
 	$pxs->print_ok("done!\n\n");
 }
 
@@ -463,7 +424,6 @@ if ($#need_packagealtname >= 0) {
 	}
 	print "   Please add entries for these packages to the up2date_package.altname file.\n";
 }
-
 print "\n";
 exit(0);
 
@@ -472,32 +432,44 @@ exit(0);
 # -----------------------------------------------------------------------------
 
 sub getPerlPackages {
-	my %excludeDirs			= ("." => 1, ".." => 1, "metadata" => 1, "licenses" => 1, "eclass" => 1, "distfiles" => 1, "virtual" => 1, "profiles" => 1);
-	my @matches			= ();
-	my $dhp;
-	my $tc;
-	my $tp;
-	
-	foreach $tc (@scan_portage_categories) {
-		next if (!-d $portdir.'/'.$tc);
-		$dhp = new DirHandle($portdir.'/'.$tc);
-		while (defined($tp = $dhp->read)) {
-			# - not excluded and $_ is a dir?
-			if (! $excludeDirs{$tp} && -d $portdir.'/'.$tc.'/'.$tp) {
-				@tmp_availableVersions=();
-				my @tmp_availableEbuilds = $pxs->getAvailableEbuilds($tc.'/'.$tp,$portdir);
-				foreach (@tmp_availableEbuilds) {
-					push(@tmp_availableVersions,$pxs->getEbuildVersion($_));
-				}
-				
-				# - get highest version >
-				if ($#tmp_availableVersions>-1) {
-					$modules{'portage_lc_realversion'}{lc($tp)}=(sort(@tmp_availableVersions))[$#tmp_availableVersions];
-					$modules{'portage_lc'}{lc($tp)}=$modules{'portage_lc_realversion'}{lc($tp)};
+	my %excludeDirs = (
+		"." => 1,
+		".." => 1,
+		"metadata" => 1,
+		"licenses" => 1,
+		"eclass" => 1,
+		"distfiles" => 1,
+		"virtual" => 1,
+		"profiles" => 1,
+		"CVS" => 1,
+	);
 
-					$modules{'portage_lc'}{lc($tp)}=~s|^([0-9]+(\.[0-9]+)*).*|$1|;
-					$modules{'portage'}{lc($tp)}{'name'}=$tp;
-					$modules{'portage'}{lc($tp)}{'category'}=$tc;
+	foreach my $tc (@scan_portage_categories) {
+		next if (!-d $portdir.'/'.$tc);
+		my $dhp = new DirHandle($portdir.'/'.$tc);
+		while (defined( my $tp = $dhp->read)) {
+			# - not excluded and $_ is a dir?
+			if (! $excludeDirs{$tp} && -d "$portdir/$tc/$tp") {
+				my $package = $tp;
+				if ( exists $paltname{$tp} and $paltname{$tp} ne '-' ) {
+					$package = $paltname{$tp};
+				}
+				$modules{$package}{'PN'}=$tp;
+				$modules{$package}{'CATEGORY'}=$tc;
+				$modules{$package}{'PV'}=$pxs->getBestEbuildVersion($tc.'/'.$tp,$portdir);
+				$modules{$package}{'CPAN_VERSION'}=
+					getCPANVERSION($portdir.'/'.$tc.'/'.$tp.'/'.$tp.'-'.$modules{$package}{'PV'}.'.ebuild');
+				if ($modules{$package}{'CPAN_VERSION'} ) {
+					$modules{$package}{'EBUILD_V'} = version->parse($modules{$package}{'CPAN_VERSION'});
+				} else {
+					my $version = "".$modules{$package}{'PV'};
+					$version =~ s/_.*//;
+					$version =~ s/-.*//;
+					$version =~ s/[a-zA-z]*$//;
+					my @tmp_v = split /\./, $version;
+					$version = shift(@tmp_v) .".";
+					$version .= shift @tmp_v while @tmp_v;
+					$modules{$package}{'EBUILD_V'} = version->parse($version);
 				}
 			}
 		}
@@ -505,67 +477,45 @@ sub getPerlPackages {
 	}
 }
 
+sub getCPANVERSION {
+    my ($file) = @_;
+    my $cpan_re = qr{^MODULE_VERSION=(['"]?)([\d.]+)\1$};
+    open my ($fh), '<', $file or die "Cannot open $file: $!";
+    while (<$fh>) {
+        next unless $_ =~ m{$cpan_re};
+        return $2;
+    }
+    close $fh;
+    return 0;
+}
+
 sub getCPANPackages {
 	my $force_cpan_reload	= shift;
-	my $cpan_pn		= "";
-	my @tmp_v		= ();
-	
+
 	if ($force_cpan_reload) {
 		# - User forced reload of the CPAN index >
 		CPAN::Index->force_reload();
 	}
-	
-	for $mod (CPAN::Shell->expand("Module","/./")) {
+
+	for my $mod (CPAN::Shell->expand("Module","/./"),) {
 		if (defined $mod->cpan_version) {
 			# - Fetch CPAN-filename and cut out the filename of the tarball.
 			#   We are not using $mod->id here because doing so would end up
 			#   missing a lot of our ebuilds/packages >
-			$cpan_pn = $mod->cpan_file;
-			$cpan_pn =~ s|.*/||;
-			
-			if ($mod->cpan_version eq "undef" && ($cpan_pn=~m/ / || $cpan_pn eq "" || ! $cpan_pn )) {
-				# - invalid line - skip that one >
-				next;
-			}
-			
-			# - Right now both are "MODULE-FOO-VERSION-EXT" >
-			my $cpan_version = $cpan_pn;
-			
-			# - Drop "-VERSION-EXT" from cpan_pn >
-			$cpan_pn =~ s/(?:-?)?(?:v?[\d\.]+[a-z]?)?\.(?:tar|tgz|zip|bz2|gz|tar\.gz)?$//;
-			
-			if ( length(lc($cpan_version)) >= length(lc($cpan_pn)) ) {
-				# - Drop "MODULE-FOO-" from version >
-				if (length(lc($cpan_version)) == length(lc($cpan_pn))) {
-					$cpan_version=0;
-				}
-				else {
-					$cpan_version = substr($cpan_version,length(lc($cpan_pn))+1,length(lc($cpan_version))-length(lc($cpan_pn))-1);
-				}
-				if (defined $cpan_version) {
-					$cpan_version =~ s/\.(?:tar|tgz|zip|bz2|gz|tar\.gz)?$//;
-					
-					# - Remove any leading/trailing stuff (like "v" in "v5.2.0") we don't want >
-					$cpan_version=~s/^[a-zA-Z]+//;
-					$cpan_version=~s/[a-zA-Z.]+$//;
-					
-					# - Convert CPAN version >
-					@tmp_v=split(/\./,$cpan_version);
-					if ($#tmp_v > 1) {
-						if ($DEBUG) { print " converting version -> ".$cpan_version; }
-						$cpan_version=$tmp_v[0].".";
-						for (1..$#tmp_v) { $cpan_version.= $tmp_v[$_]; }
-						if ($DEBUG) { print " -> ".$cpan_version."\n"; }
-					}
-					
-					if ($cpan_version eq "") { $cpan_version=0; }
-					
-					# - Don't replace versions from CPAN if they're older than the one we've got >
-					if (! exists($modules{'cpan'}{$cpan_pn}) || $modules{'cpan'}{$cpan_pn} < $cpan_version) {
-						$modules{'cpan'}{$cpan_pn} = $cpan_version;
-						$modules{'cpan_lc'}{lc($cpan_pn)} = $cpan_version;
-					}
-				}
+			my $d = CPAN::DistnameInfo->new($mod->cpan_file);
+			my $cpan_pn = $d->dist();
+			next unless $cpan_pn;
+			next unless exists $modules{$cpan_pn};
+			my $version = $d->version;
+			$version =~ s/[a-z]+$//;
+			$version =~ s/\.[a-zA-Z][a-zA-Z0-9]*$//; # Crazy PIP stuff
+			my $cpan_version = eval { version->parse($version) } ||
+				do {
+					#if ($DEBUG) { print "$cpan_pn",Dumper $d,"\n"};
+					version->parse('0')
+				};
+			if (! exists( $modules{$cpan_pn}{'CPAN_V'}) || $modules{$cpan_pn}{'CPAN_V'} < $cpan_version) {
+				$modules{$cpan_pn}{'CPAN_V'} = $cpan_version;
 			}
 		}
 	}
@@ -578,21 +528,23 @@ sub printHeader {
 }
 
 sub printUsage {
-	print "  --generate-xml         : generate GuideXML file with table of outdated packages\n";
-	print "                           (using template_outdated-cpan-packages.xml)\n";
-	print "  --generate-mail        : generate an mail body\n";
-	print "                           (using template_outdated-cpan-packages.mail)\n";
-	print "  --generate-html        : generate html file with table of outdated packages\n";
-	print "                           (using template_outdated-cpan-packages.html)\n";
-	print "  --generate-packagelist : generate list of outdated packages\n";
-	print "  --generate-bumplist    : generate list of outdated packages for bumping\n";
-	print "  --generate-all         : enables generation on xml, mail, html and packagelist\n";
-	print "  --force-cpan-reload    : forces reload of the CPAN indexes\n";
-	print "  --portdir              : use given PORTDIR instead of the one defined in make.conf\n";
-	print "  --debug                : show debug information\n";
-	print "  -h, --help             : show this help\n";
-	print "\n";
-	
+	print << "EOD" ;
+  --generate-xml         : generate GuideXML file with table of outdated packages
+                           (using template_outdated-cpan-packages.xml)
+  --generate-mail        : generate an mail body
+                           (using template_outdated-cpan-packages.mail)
+  --generate-html        : generate html file with table of outdated packages
+                           (using template_outdated-cpan-packages.html)
+  --generate-packagelist : generate list of outdated packages
+  --generate-bumplist    : generate list of outdated packages for bumping
+  --generate-all         : enables generation on xml, mail, html and packagelist
+  --force-cpan-reload    : forces reload of the CPAN indexes
+  --portdir              : use given PORTDIR instead of the one defined in make.conf
+  --debug                : show debug information
+  -h, --help             : show this help
+
+EOD
+
 	return 0;
 }
 

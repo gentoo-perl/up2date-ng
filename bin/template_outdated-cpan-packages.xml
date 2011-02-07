@@ -3,8 +3,8 @@
 <!-- $Header: $ -->
 
 <!-- Do Not Translate !! -->
-<guide link="/proj/en/perl/outdated-cpan-packages.xml">
-<title>Outdated CPAN Packages (Ebuild vs CPAN)</title>
+<guide link="<TMPL_GUIDE_LINK>">
+<title>Outdated CPAN Packages (<TMPL_REPO_NAME> vs CPAN)</title>
 
 <author title="Author">
   Script generated using up2date-ng version <TMPL_VAR_UP2DATE-NG-VERSION>
@@ -29,7 +29,7 @@
 <p>
 This list is not exhaustive and may contain mistakes/errors. Accuracy is only
 guaranteed at 90% and is generated to inform developers about which CPAN
-modules are currently out of date in portage. Our most frequent bug request is
+modules are currently out of date in <TMPL_REPO_NAME>. Our most frequent bug request is
 for module bumping. This list is intended as acknowledgement (and hopefully
 will curb some of the bugs to boot).
 </p>
@@ -46,8 +46,9 @@ will curb some of the bugs to boot).
 <table>
   <tr>
     <th>Packagename</th>
-    <th>Version in portage</th>
+    <th>Version in <TMPL_REPO_NAME></th>
     <th>Version on CPAN</th>
+    <th>Diff</th>
   </tr>
   <TMPL_PACKAGELIST_TABLE>
 </table>
